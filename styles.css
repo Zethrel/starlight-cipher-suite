@@ -158,6 +158,12 @@ body::before {
     filter: drop-shadow(0 0 8px var(--color-primary-glow));
 }
 
+.logo-img {
+    border-radius: 50%;
+    border: 1.5px solid var(--color-primary);
+    object-fit: cover;
+}
+
 .logo-text h1 {
     font-size: 1.6rem;
     font-weight: 800;
