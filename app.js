@@ -75,10 +75,7 @@ const elements = {
     mobileModal: document.getElementById('mobile-modal'),
     closeModalBtn: document.getElementById('close-modal-btn'),
     qrImage: document.getElementById('qr-image'),
-    qrUrlText: document.getElementById('qr-url-text'),
-    localIpInput: document.getElementById('local-ip-input'),
-    btnUpdateQr: document.getElementById('btn-update-qr'),
-    ipConfigContainer: document.getElementById('ip-config-container')
+    qrUrlText: document.getElementById('qr-url-text')
     
 };
 
@@ -408,37 +405,8 @@ function bindEvents() {
     };
 
     elements.mobileBtn.addEventListener('click', () => {
-        let currentUrl = window.location.href;
-        const host = window.location.hostname;
-        
-        // Show IP configuration panel if hosted on loopback/localhost
-        if (host === 'localhost' || host === '127.0.0.1' || host === '::1') {
-            elements.ipConfigContainer.classList.remove('hidden');
-            const savedIp = localStorage.getItem('local_pc_ip') || '';
-            elements.localIpInput.value = savedIp;
-            if (savedIp) {
-                currentUrl = `http://${savedIp}:8000/`;
-            }
-        } else {
-            elements.ipConfigContainer.classList.add('hidden');
-        }
-        
-        updateQrCode(currentUrl);
+        updateQrCode("https://kosejarl.github.io/starlight-cipher-suite/");
         elements.mobileModal.classList.remove('hidden');
-    });
-
-    elements.btnUpdateQr.addEventListener('click', () => {
-        const ip = elements.localIpInput.value.trim();
-        if (ip) {
-            // Simple IPv4 regex validation
-            if (/^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$/.test(ip)) {
-                localStorage.setItem('local_pc_ip', ip);
-                const url = `http://${ip}:8000/`;
-                updateQrCode(url);
-            } else {
-                alert("Please enter a valid IPv4 address (e.g. 192.168.1.100).");
-            }
-        }
     });
 
     elements.closeModalBtn.addEventListener('click', () => {
