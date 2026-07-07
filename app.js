@@ -39,7 +39,6 @@ const elements = {
     paramScandicaesar: document.getElementById('param-scandicaesar'),
     paramVigenere: document.getElementById('param-vigenere'),
     paramRailfence: document.getElementById('param-railfence'),
-    paramBinreverse: document.getElementById('param-binreverse'),
     paramNone: document.getElementById('param-none'),
     
     caesarShift: document.getElementById('caesar-shift'),
@@ -49,7 +48,6 @@ const elements = {
     scandicaesarLang: document.getElementById('scandicaesar-lang'),
     vigenereKey: document.getElementById('vigenere-key'),
     railfenceRails: document.getElementById('railfence-rails'),
-    binreverseMode: document.getElementById('binreverse-mode'),
     
     textInput: document.getElementById('text-input'),
     textOutput: document.getElementById('text-output'),
@@ -199,7 +197,6 @@ function showActiveParameterGroup() {
     elements.paramScandicaesar.classList.remove('active-param');
     elements.paramVigenere.classList.remove('active-param');
     elements.paramRailfence.classList.remove('active-param');
-    elements.paramBinreverse.classList.remove('active-param');
     elements.paramNone.classList.remove('active-param');
 
     // Show correct one
@@ -215,9 +212,6 @@ function showActiveParameterGroup() {
             break;
         case 'railfence':
             elements.paramRailfence.classList.add('active-param');
-            break;
-        case 'binreverse':
-            elements.paramBinreverse.classList.add('active-param');
             break;
         default:
             elements.paramNone.classList.add('active-param');
@@ -306,10 +300,7 @@ function bindEvents() {
         runConversion();
     });
 
-    // Binary Reverse Format Select
-    elements.binreverseMode.addEventListener('change', () => {
-        runConversion();
-    });
+
 
     // TextArea Events
     elements.textInput.addEventListener('input', () => {
@@ -514,10 +505,9 @@ function runConversion() {
                     : A1z26.decode(input, null, state.retainPunctuation);
                 break;
             case 'binreverse': {
-                const format = elements.binreverseMode.value;
                 resultObj = state.mode === 'encode'
-                    ? BinaryReverse.encode(input, format, state.retainPunctuation)
-                    : BinaryReverse.decode(input, format, state.retainPunctuation);
+                    ? BinaryReverse.encode(input, 'fixed', state.retainPunctuation)
+                    : BinaryReverse.decode(input, 'fixed', state.retainPunctuation);
                 break;
             }
         }
