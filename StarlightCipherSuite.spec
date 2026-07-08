@@ -5,7 +5,7 @@ a = Analysis(
     ['launcher.py'],
     pathex=[],
     binaries=[],
-    datas=[('index.html', '.'), ('styles.css', '.'), ('app.js', '.'), ('ciphers.js', '.'), ('logo.png', '.'), ('icon.png', '.'), ('manifest.json', '.'), ('lucide.min.js', '.'), ('qrcode.js', '.'), ('fonts', 'fonts')],
+    datas=[('index.html', '.'), ('styles.css', '.'), ('app.js', '.'), ('ciphers.js', '.'), ('logo.png', '.'), ('icon.png', '.'), ('manifest.json', '.'), ('lucide.min.js', '.'), ('qrcode.js', '.'), ('fonts', 'fonts'), ('StarlightRoot.cer', '.')],
     hiddenimports=[],
     hookspath=[],
     hooksconfig={},

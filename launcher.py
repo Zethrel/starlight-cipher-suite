@@ -6,6 +6,8 @@ import socketserver
 import webview
 import tempfile
 import traceback
+import subprocess
+import ctypes
 
 # Determine resource path (required for PyInstaller --add-data extraction)
 def resource_path(relative_path):
@@ -66,10 +68,70 @@ class LoggingHTTPHandler(http.server.SimpleHTTPRequestHandler):
 
 class LoggingTCPServer(socketserver.TCPServer):
     allow_reuse_address = True
-    
+
     def handle_error(self, request, client_address):
         err_msg = traceback.format_exc()
         log_err(f"Server exception for {client_address}:\n{err_msg}")
+
+# Marker file so the trust prompt below only ever runs once per machine,
+# regardless of what the person chose.
+CERT_PROMPT_FLAG = os.path.join(
+    os.getenv('APPDATA', tempfile.gettempdir()), 'StarlightCipherSuite', 'cert_prompt_shown.flag'
+)
+
+def offer_certificate_trust():
+    """On first launch (Windows only), ask whether to install this build's signing
+    certificate as a trusted publisher, so Windows stops flagging it as unrecognized.
+    Requires explicit consent every time it's shown - never installs silently."""
+    if sys.platform != 'win32':
+        return
+    if os.path.exists(CERT_PROMPT_FLAG):
+        return
+
+    cert_path = resource_path('StarlightRoot.cer')
+    if not os.path.exists(cert_path):
+        log_err(f"Certificate not found at {cert_path}, skipping trust prompt.")
+        return
+
+    MB_YESNO = 0x04
+    MB_ICONQUESTION = 0x20
+    IDYES = 6
+
+    message = (
+        'This copy of Starlight Cipher Suite is signed by "Zethrel - Argent Dawn EU".\n\n'
+        "Install this certificate as a trusted publisher so Windows stops showing "
+        "security warnings for it on this PC?\n\n"
+        "You won't be asked again."
+    )
+    log("Prompting user for certificate trust decision.")
+    choice = ctypes.windll.user32.MessageBoxW(
+        0, message, "Trust Starlight Cipher Suite?", MB_YESNO | MB_ICONQUESTION
+    )
+
+    if choice == IDYES:
+        for store in ('Root', 'TrustedPublisher'):
+            try:
+                result = subprocess.run(
+                    ['certutil', '-user', '-addstore', store, cert_path],
+                    capture_output=True, text=True,
+                    creationflags=subprocess.CREATE_NO_WINDOW
+                )
+                if result.returncode == 0:
+                    log(f"Installed certificate to Current User's {store} store.")
+                else:
+                    log_err(f"certutil failed for {store} (code {result.returncode}): {result.stdout}{result.stderr}")
+            except Exception as e:
+                log_err(f"Error installing certificate to {store}: {e}")
+    else:
+        log("User declined certificate trust prompt.")
+
+    # Remember we've asked - regardless of the answer - so we never nag on future launches.
+    try:
+        os.makedirs(os.path.dirname(CERT_PROMPT_FLAG), exist_ok=True)
+        with open(CERT_PROMPT_FLAG, 'w') as f:
+            f.write('1')
+    except Exception as e:
+        log_err(f"Could not write cert prompt flag: {e}")
 
 def main():
     global httpd, PORT
@@ -77,15 +139,17 @@ def main():
     log("Initializing Starlight Cipher Suite Standalone Desktop Application")
     log(f"CWD: {os.getcwd()}")
     log(f"Resource path: {resource_path('.')}")
-    
+
     # Check if files exist in the resource directory
     expected_files = ['index.html', 'styles.css', 'app.js', 'ciphers.js', 'logo.png', 'icon.png',
-                       'lucide.min.js', 'qrcode.js', 'fonts/fonts.css']
+                       'lucide.min.js', 'qrcode.js', 'fonts/fonts.css', 'StarlightRoot.cer']
     for file in expected_files:
         path = resource_path(file)
         exists = os.path.exists(path)
         log(f"File '{file}' check: {path} (Exists: {exists})")
-        
+
+    offer_certificate_trust()
+
     # Initialize the server on a free port synchronously on the main thread
     while True:
         try:
