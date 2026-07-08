@@ -52,8 +52,12 @@ const elements = {
     
     caesarShift: document.getElementById('caesar-shift'),
     shiftValue: document.getElementById('shift-value'),
+    caesarShiftDown: document.getElementById('caesar-shift-down'),
+    caesarShiftUp: document.getElementById('caesar-shift-up'),
     scandicaesarShift: document.getElementById('scandicaesar-shift'),
     scandicaesarShiftValue: document.getElementById('scandicaesar-shift-value'),
+    scandicaesarShiftDown: document.getElementById('scandicaesar-shift-down'),
+    scandicaesarShiftUp: document.getElementById('scandicaesar-shift-up'),
     scandicaesarLang: document.getElementById('scandicaesar-lang'),
     vigenereKey: document.getElementById('vigenere-key'),
     railfenceRails: document.getElementById('railfence-rails'),
@@ -442,11 +446,26 @@ function bindEvents() {
         runConversion();
     });
 
+    // Nudge a range input by +/-1, clamped to its min/max, reusing its own 'input' handler
+    const nudgeSlider = (slider, delta) => {
+        const min = parseInt(slider.min, 10);
+        const max = parseInt(slider.max, 10);
+        const newValue = Math.min(max, Math.max(min, parseInt(slider.value, 10) + delta));
+        slider.value = newValue;
+        slider.dispatchEvent(new Event('input', { bubbles: true }));
+    };
+
+    elements.caesarShiftDown.addEventListener('click', () => nudgeSlider(elements.caesarShift, -1));
+    elements.caesarShiftUp.addEventListener('click', () => nudgeSlider(elements.caesarShift, 1));
+
     // Scandi Caesar Shift Slider
     elements.scandicaesarShift.addEventListener('input', (e) => {
         elements.scandicaesarShiftValue.textContent = e.target.value;
         runConversion();
     });
+
+    elements.scandicaesarShiftDown.addEventListener('click', () => nudgeSlider(elements.scandicaesarShift, -1));
+    elements.scandicaesarShiftUp.addEventListener('click', () => nudgeSlider(elements.scandicaesarShift, 1));
 
     // Scandi Caesar Language Select
     elements.scandicaesarLang.addEventListener('change', () => {

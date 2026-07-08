@@ -130,7 +130,11 @@
                         <!-- Caesar Shift Key -->
                         <div class="param-group active-param" id="param-caesar">
                             <label for="caesar-shift">Shift Key (0-25): <span id="shift-value">3</span></label>
-                            <input type="range" id="caesar-shift" min="0" max="25" value="3" class="range-slider">
+                            <div class="shift-control-row">
+                                <button type="button" class="nudge-btn" id="caesar-shift-down" aria-label="Decrease shift by 1">&minus;</button>
+                                <input type="range" id="caesar-shift" min="0" max="25" value="3" class="range-slider">
+                                <button type="button" class="nudge-btn" id="caesar-shift-up" aria-label="Increase shift by 1">+</button>
+                            </div>
                         </div>
 
                         <!-- Scandi Caesar Shift Key & Lang -->
@@ -144,7 +148,11 @@
                             </div>
                             <div>
                                 <label for="scandicaesar-shift">Shift Key (0-28): <span id="scandicaesar-shift-value">3</span></label>
-                                <input type="range" id="scandicaesar-shift" min="0" max="28" value="3" class="range-slider">
+                                <div class="shift-control-row">
+                                    <button type="button" class="nudge-btn" id="scandicaesar-shift-down" aria-label="Decrease shift by 1">&minus;</button>
+                                    <input type="range" id="scandicaesar-shift" min="0" max="28" value="3" class="range-slider">
+                                    <button type="button" class="nudge-btn" id="scandicaesar-shift-up" aria-label="Increase shift by 1">+</button>
+                                </div>
                             </div>
                         </div>
 
