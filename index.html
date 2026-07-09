@@ -184,7 +184,7 @@
                                     <button id="basementen-view-log" class="btn btn-secondary btn-sm" style="display: flex; align-items: center; gap: 6px;">
                                         <i data-lucide="file-text" style="width: 14px; height: 14px;"></i> View Key Log
                                     </button>
-                                    <button id="basementen-reset-pwd" class="btn btn-secondary btn-sm" style="background: rgba(239, 68, 68, 0.1); border-color: rgba(239, 68, 68, 0.2); color: #ef4444; display: flex; align-items: center; gap: 6px;">
+                                    <button id="basementen-reset-pwd" class="btn btn-secondary btn-sm btn-danger" style="display: flex; align-items: center; gap: 6px;">
                                         <i data-lucide="trash-2" style="width: 14px; height: 14px;"></i> Wipe & Reset
                                     </button>
                                 </div>
@@ -383,6 +383,7 @@
                         <label for="basementen-setup-confirm-input">Confirm Master Password</label>
                         <input type="password" id="basementen-setup-confirm-input" class="input-text" placeholder="Re-enter password" disabled style="width: 100%;">
                     </div>
+                    <span class="param-error" id="basementen-setup-error" role="alert"></span>
                     <button type="submit" id="basementen-setup-submit" class="btn btn-primary" style="margin-top: 8px; width: 100%; display: flex; justify-content: center; align-items: center; gap: 6px;" disabled>
                         <i data-lucide="lock"></i> Save Master Password
                     </button>
@@ -443,7 +444,7 @@
                 </div>
 
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 5px;">
-                    <button id="basementen-clear-log" class="btn btn-secondary btn-sm" style="background: rgba(239, 68, 68, 0.1); border-color: rgba(239, 68, 68, 0.2); color: #ef4444; display: flex; align-items: center; gap: 6px;">
+                    <button id="basementen-clear-log" class="btn btn-secondary btn-sm btn-danger" style="display: flex; align-items: center; gap: 6px;">
                         <i data-lucide="trash-2" style="width: 14px; height: 14px;"></i> Clear Log History
                     </button>
                     <button id="basementen-log-ok" class="btn btn-primary btn-sm">Close Log</button>
@@ -477,6 +478,26 @@
         </div>
     </div>
 
+
+    <!-- SHARED CONFIRMATION MODAL -->
+    <div id="confirm-modal" class="modal-overlay hidden">
+        <div class="modal-content glass confirm-modal">
+            <div class="modal-header">
+                <h3 id="confirm-modal-title"></h3>
+            </div>
+            <div class="modal-body">
+                <p id="confirm-modal-message" class="modal-desc"></p>
+                <div class="input-group hidden" id="confirm-modal-type-group">
+                    <label id="confirm-modal-type-label" for="confirm-modal-type-input"></label>
+                    <input type="text" id="confirm-modal-type-input" class="input-text" autocomplete="off" spellcheck="false">
+                </div>
+                <div class="confirm-modal-actions">
+                    <button id="confirm-modal-cancel" class="btn btn-secondary">Cancel</button>
+                    <button id="confirm-modal-ok" class="btn btn-primary">Confirm</button>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <!-- Core App Module -->
     <script type="module" src="app.js"></script>

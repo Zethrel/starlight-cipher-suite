@@ -136,6 +136,17 @@ const elements = {
     basementenRevealKeyError: document.getElementById('basementen-reveal-key-error'),
     basementenRevealKeyClose: document.getElementById('basementen-reveal-key-close'),
     basementenRevealKeyCancel: document.getElementById('basementen-reveal-key-cancel'),
+    basementenSetupError: document.getElementById('basementen-setup-error'),
+
+    // Shared confirmation modal
+    confirmModal: document.getElementById('confirm-modal'),
+    confirmModalTitle: document.getElementById('confirm-modal-title'),
+    confirmModalMessage: document.getElementById('confirm-modal-message'),
+    confirmModalTypeGroup: document.getElementById('confirm-modal-type-group'),
+    confirmModalTypeLabel: document.getElementById('confirm-modal-type-label'),
+    confirmModalTypeInput: document.getElementById('confirm-modal-type-input'),
+    confirmModalCancel: document.getElementById('confirm-modal-cancel'),
+    confirmModalOk: document.getElementById('confirm-modal-ok'),
     
     // Panel title and copy helper elements
     inputPanelTitle: document.getElementById('input-panel-title'),
@@ -190,6 +201,89 @@ function topVisibleModal() {
         if (!overlay.classList.contains('hidden')) top = overlay;
     }
     return top;
+}
+
+/* ==========================================================================
+   TOASTS & CONFIRMATION DIALOG
+   Non-blocking replacements for alert()/confirm(): notifications become
+   toasts; destructive actions go through a styled confirm modal that can
+   require typing a phrase before the confirm button unlocks.
+   ========================================================================== */
+
+function showToast(message, type = 'info', duration = 3500) {
+    let container = document.querySelector('.toast-container');
+    if (!container) {
+        container = document.createElement('div');
+        container.className = 'toast-container';
+        document.body.appendChild(container);
+    }
+
+    const toast = document.createElement('div');
+    toast.className = `toast glass toast-${type}`;
+    toast.textContent = message;
+    container.appendChild(toast);
+
+    requestAnimationFrame(() => toast.classList.add('visible'));
+    setTimeout(() => {
+        toast.classList.remove('visible');
+        // Remove after the fade-out transition (fallback timer in case
+        // transitions are disabled, e.g. prefers-reduced-motion).
+        toast.addEventListener('transitionend', () => toast.remove(), { once: true });
+        setTimeout(() => toast.remove(), 600);
+    }, duration);
+}
+
+/**
+ * Styled confirmation dialog. Resolves true if confirmed, false otherwise.
+ * With `typePhrase` set, the confirm button stays disabled until the user
+ * types the phrase exactly — used for irreversible wipe actions.
+ */
+function showConfirm({ title, message, confirmLabel = 'Confirm', danger = false, typePhrase = null }) {
+    return new Promise((resolve) => {
+        elements.confirmModalTitle.textContent = title;
+        elements.confirmModalMessage.textContent = message;
+        elements.confirmModalOk.textContent = confirmLabel;
+        elements.confirmModalOk.classList.toggle('btn-danger', danger);
+        elements.confirmModalOk.classList.toggle('btn-primary', !danger);
+
+        if (typePhrase) {
+            elements.confirmModalTypeGroup.classList.remove('hidden');
+            elements.confirmModalTypeLabel.textContent = `Type ${typePhrase} to confirm:`;
+            elements.confirmModalTypeInput.value = '';
+            elements.confirmModalOk.disabled = true;
+            elements.confirmModalTypeInput.oninput = () => {
+                elements.confirmModalOk.disabled = elements.confirmModalTypeInput.value !== typePhrase;
+            };
+            elements.confirmModalTypeInput.onkeydown = (e) => {
+                if (e.key === 'Enter' && !elements.confirmModalOk.disabled) {
+                    e.preventDefault();
+                    elements.confirmModalOk.click();
+                }
+            };
+        } else {
+            elements.confirmModalTypeGroup.classList.add('hidden');
+            elements.confirmModalOk.disabled = false;
+        }
+
+        const finish = (value) => {
+            closeModal(elements.confirmModal);
+            elements.confirmModalOk.onclick = null;
+            elements.confirmModalCancel.onclick = null;
+            elements.confirmModalTypeInput.oninput = null;
+            elements.confirmModalTypeInput.onkeydown = null;
+            resolve(value);
+        };
+
+        elements.confirmModalOk.onclick = () => finish(true);
+        elements.confirmModalCancel.onclick = () => finish(false);
+
+        openModal(elements.confirmModal);
+        if (typePhrase) {
+            elements.confirmModalTypeInput.focus();
+        } else {
+            elements.confirmModalCancel.focus();
+        }
+    });
 }
 
 document.addEventListener('keydown', (e) => {
@@ -668,7 +762,7 @@ function bindEvents() {
             triggerHistoryAutoSave();
         } catch (err) {
             // Fallback if permission denied
-            alert("Please paste using Ctrl+V or Cmd+V.");
+            showToast('Clipboard access was blocked — paste with Ctrl+V or Cmd+V instead.', 'warning');
         }
     });
 
@@ -766,28 +860,35 @@ function bindEvents() {
     registerModal(elements.basementenUnlockModal, () => elements.basementenUnlockCancel.click());
     registerModal(elements.basementenLogModal, () => closeModal(elements.basementenLogModal));
     registerModal(elements.basementenRevealKeyModal, () => closeModal(elements.basementenRevealKeyModal));
+    // Registered last: the confirm dialog can stack on top of any other modal.
+    registerModal(elements.confirmModal, () => elements.confirmModalCancel.click());
 
 
 
     // Basementen Event Listeners
     elements.basementenGenKey.addEventListener('click', async () => {
         if (!basementenUnlocked || !basementenCryptoKey) return;
-        if (confirm("Are you sure you want to generate a new 256-bit key? This will replace the active key.")) {
-            const newKey = generate256BitKey();
-            const iv = window.crypto.getRandomValues(new Uint8Array(12));
-            const encrypted = await window.crypto.subtle.encrypt(
-                { name: "AES-GCM", iv: iv },
-                basementenCryptoKey,
-                new TextEncoder().encode(newKey)
-            );
-            localStorage.setItem('basementen_iv', bufToHex(iv));
-            localStorage.setItem('basementen_encrypted_key', bufToHex(encrypted));
-            basementenKey = newKey;
-            elements.basementenKeyStatus.textContent = 'Active [Secure 256-bit]';
-            elements.basementenKeyStatus.style.color = '#10b981';
-            alert("New 256-bit key generated and encrypted successfully.");
-            runConversion();
-        }
+        const ok = await showConfirm({
+            title: 'Generate New Key',
+            message: 'This will replace the active 256-bit key. New transactions will use the new key; previously saved transactions stay decryptable through the key log.',
+            confirmLabel: 'Generate'
+        });
+        if (!ok) return;
+
+        const newKey = generate256BitKey();
+        const iv = window.crypto.getRandomValues(new Uint8Array(12));
+        const encrypted = await window.crypto.subtle.encrypt(
+            { name: "AES-GCM", iv: iv },
+            basementenCryptoKey,
+            new TextEncoder().encode(newKey)
+        );
+        localStorage.setItem('basementen_iv', bufToHex(iv));
+        localStorage.setItem('basementen_encrypted_key', bufToHex(encrypted));
+        basementenKey = newKey;
+        elements.basementenKeyStatus.textContent = 'Active [Secure 256-bit]';
+        elements.basementenKeyStatus.style.color = '#10b981';
+        showToast('New 256-bit key generated and encrypted.', 'success');
+        runConversion();
     });
 
     elements.basementenViewLog.addEventListener('click', () => {
@@ -797,9 +898,9 @@ function bindEvents() {
         if (window.lucide) window.lucide.createIcons();
     });
 
-    elements.basementenResetPwd.addEventListener('click', () => {
-        if (wipeBasementenWorkspace("WARNING: Are you sure you want to wipe all transaction history, generated keys, and master password for The Basementen? This cannot be undone!")) {
-            alert("The Basementen workspace has been fully wiped and reset.");
+    elements.basementenResetPwd.addEventListener('click', async () => {
+        if (await wipeBasementenWorkspace("This will permanently erase all transaction history, generated keys, and the master password for The Basementen. This cannot be undone.")) {
+            showToast('The Basementen workspace has been fully wiped and reset.', 'success');
         }
     });
 
@@ -811,11 +912,18 @@ function bindEvents() {
         closeModal(elements.basementenLogModal);
     });
 
-    elements.basementenClearLog.addEventListener('click', () => {
-        if (confirm("Are you sure you want to clear all Basementen transaction logs?")) {
-            localStorage.removeItem('basementen_history');
-            renderBasementenLog();
-        }
+    elements.basementenClearLog.addEventListener('click', async () => {
+        const ok = await showConfirm({
+            title: 'Clear Log History',
+            message: 'This permanently deletes every saved transaction and its encrypted key. Any ciphertext whose key only exists in this log becomes undecryptable. This cannot be undone.',
+            confirmLabel: 'Clear Log',
+            danger: true,
+            typePhrase: 'CLEAR'
+        });
+        if (!ok) return;
+        localStorage.removeItem('basementen_history');
+        renderBasementenLog();
+        showToast('Basementen transaction log cleared.', 'success');
     });
 
     // Dynamic validation & password-first lock handlers for the Transaction Password field.
@@ -926,22 +1034,22 @@ function bindEvents() {
         const txName = elements.basementenTxName.value.trim();
 
         if (!basementenUnlocked) {
-            alert("Master password must be entered first.");
+            showToast('Master password must be entered first.', 'error');
             return;
         }
 
         if (!inputVal || !outputVal || outputVal.startsWith('[LOCKED') || outputVal.startsWith('LOCKED:')) {
-            alert("Please compose some plaintext and perform encoding first to generate output.");
+            showToast('Compose some plaintext and perform encoding first to generate output.', 'warning');
             return;
         }
 
         const success = await saveBasementenTransaction(inputVal, outputVal, 'encode', basementenKey, txName);
         if (success) {
             navigator.clipboard.writeText(outputVal).then(() => {
-                alert("Transaction saved successfully to vault log and ciphertext output copied to clipboard!");
+                showToast('Transaction saved to vault log and ciphertext copied to clipboard.', 'success');
             }).catch(err => {
                 console.error("Clipboard copy failed on save", err);
-                alert("Transaction saved successfully to vault log!");
+                showToast('Transaction saved to vault log.', 'success');
             }).finally(() => {
                 // Clear and reset all fields
                 elements.textInput.value = '';
@@ -963,11 +1071,11 @@ function bindEvents() {
     elements.basementenCopyOutput.addEventListener('click', () => {
         const val = elements.textOutput.value;
         if (!val || val.startsWith('[LOCKED') || val.startsWith('LOCKED:')) {
-            alert("Nothing to copy or workspace is locked.");
+            showToast('Nothing to copy or workspace is locked.', 'warning');
             return;
         }
         navigator.clipboard.writeText(val).then(() => {
-            alert("Encoded output ciphertext copied to clipboard!");
+            showToast('Encoded ciphertext copied to clipboard.', 'success');
             // Auto save to history when explicitly copied
             saveToHistory(elements.textInput.value, val);
         }).catch(err => {
@@ -1831,9 +1939,17 @@ function updatePasswordStrengthMeter(password) {
 // localStorage and fall back to a plain cipher. Used both by the always-available "Wipe &
 // Reset" button and by the "Forgot your password?" recovery link in the unlock modal, since
 // that's the only reachable escape hatch when someone can't remember their master password.
-// Returns true if the user confirmed and the wipe happened, false if they backed out.
-function wipeBasementenWorkspace(confirmMessage) {
-    if (!confirm(confirmMessage)) {
+// Irreversible, so the confirm requires typing WIPE before it unlocks.
+// Resolves true if the user confirmed and the wipe happened, false if they backed out.
+async function wipeBasementenWorkspace(confirmMessage) {
+    const ok = await showConfirm({
+        title: 'Wipe & Reset The Basementen',
+        message: confirmMessage,
+        confirmLabel: 'Wipe Everything',
+        danger: true,
+        typePhrase: 'WIPE'
+    });
+    if (!ok) {
         return false;
     }
 
@@ -1869,6 +1985,7 @@ function showBasementenSetup(previousCipher) {
     elements.basementenSetupSubmit.disabled = true;
 
     // Reset and wire up the live password strength meter
+    elements.basementenSetupError.textContent = '';
     updatePasswordStrengthMeter('');
     elements.basementenSetupPwdInput.oninput = (e) => {
         updatePasswordStrengthMeter(e.target.value);
@@ -1904,15 +2021,16 @@ function showBasementenSetup(previousCipher) {
     // Form submit listener
     form.onsubmit = async (e) => {
         e.preventDefault();
+        elements.basementenSetupError.textContent = '';
         const password = elements.basementenSetupPwdInput.value;
         const confirm = elements.basementenSetupConfirmInput.value;
 
         if (password.length < 10) {
-            alert("Password must be at least 10 characters.");
+            elements.basementenSetupError.textContent = 'Password must be at least 10 characters.';
             return;
         }
         if (password !== confirm) {
-            alert("Passwords do not match.");
+            elements.basementenSetupError.textContent = 'Passwords do not match.';
             return;
         }
 
@@ -1954,10 +2072,10 @@ function showBasementenSetup(previousCipher) {
             saveConfigState();
             setupUIFromState();
             runConversion();
-            alert("Master Password saved and 256-bit keyword generated successfully.");
+            showToast('Master password saved and 256-bit keyword generated.', 'success');
         } catch (err) {
             console.error(err);
-            alert("Error setting up encryption key: " + err.message);
+            showToast('Error setting up encryption key: ' + err.message, 'error', 6000);
         }
     };
 }
@@ -1980,10 +2098,10 @@ function showBasementenUnlock(previousCipher) {
 
     // Forgotten password: this modal is the only place someone locked out can reach a reset,
     // since the normal "Wipe & Reset" button lives behind the very unlock screen they're stuck on.
-    elements.basementenUnlockForgot.onclick = () => {
-        if (wipeBasementenWorkspace("WARNING: This will permanently erase your master password, generated key, and all saved transaction history for The Basementen. This cannot be undone. Continue?")) {
+    elements.basementenUnlockForgot.onclick = async () => {
+        if (await wipeBasementenWorkspace("This will permanently erase your master password, generated key, and all saved transaction history for The Basementen. This cannot be undone.")) {
             closeModal(elements.basementenUnlockModal);
-            alert("The Basementen workspace has been wiped. Select this cipher again to set a new master password.");
+            showToast('The Basementen workspace has been wiped. Select the cipher again to set a new master password.', 'success', 5000);
         }
     };
 
