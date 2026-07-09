@@ -919,12 +919,14 @@ function updateNetworkStatus() {
         elements.connectionStatus.style.borderColor = 'rgba(16, 185, 129, 0.4)';
         elements.connectionStatus.style.backgroundColor = 'rgba(16, 185, 129, 0.1)';
         elements.connectionText.textContent = "Cached";
+        elements.connectionStatus.title = "Online — app cached for offline use";
     } else {
         elements.connectionStatus.classList.remove('online');
         elements.connectionStatus.classList.add('offline');
         elements.connectionStatus.style.borderColor = 'rgba(245, 158, 11, 0.4)';
         elements.connectionStatus.style.backgroundColor = 'rgba(245, 158, 11, 0.1)';
         elements.connectionText.textContent = "Offline Mode";
+        elements.connectionStatus.title = "Offline — running from local cache";
     }
 }
 

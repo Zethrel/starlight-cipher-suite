@@ -1073,6 +1073,26 @@ textarea {
     }
 }
 
+/* Compact header on narrow screens: action buttons collapse to icons and
+   the connection badge to its status dot, so the logo never gets crowded. */
+@media (max-width: 600px) {
+    .header-actions .btn span {
+        display: none;
+    }
+
+    .header-actions .btn {
+        padding: 10px;
+    }
+
+    #connection-text {
+        display: none;
+    }
+
+    .connection-badge {
+        padding: 8px;
+    }
+}
+
 @media (max-width: 768px) {
     .app-container {
         padding: 1rem;
