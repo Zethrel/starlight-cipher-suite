@@ -1018,7 +1018,7 @@ function bindEvents() {
         localStorage.setItem('basementen_encrypted_key', bufToHex(encrypted));
         basementenKey = newKey;
         elements.basementenKeyStatus.textContent = 'Active [Secure 256-bit]';
-        elements.basementenKeyStatus.style.color = '#10b981';
+        elements.basementenKeyStatus.classList.remove('locked');
         showToast('New 256-bit key generated and encrypted.', 'success');
         runConversion();
     });
@@ -1132,12 +1132,9 @@ function bindEvents() {
             elements.textInput.disabled = false;
             elements.textInput.placeholder = "Enter ciphertext to decrypt...";
 
-            elements.basementenAutoRecognizePanel.classList.remove('hidden');
-            elements.basementenAutoRecognizePanel.style.background = 'rgba(16, 185, 129, 0.08)';
-            elements.basementenAutoRecognizePanel.style.border = '1px solid rgba(16, 185, 129, 0.2)';
-            elements.basementenAutoStatusTitle.style.color = '#10b981';
-            elements.basementenAutoStatusTitle.innerHTML = `<i data-lucide="check-circle" style="width: 14px; height: 14px;"></i> Key Recovered Successfully`;
-            elements.basementenAutoStatusDesc.style.color = 'var(--color-text-secondary)';
+            elements.basementenAutoRecognizePanel.classList.remove('hidden', 'danger');
+            elements.basementenAutoRecognizePanel.classList.add('success');
+            elements.basementenAutoStatusTitle.innerHTML = `<i data-lucide="check-circle"></i> Key Recovered Successfully`;
             elements.basementenAutoStatusDesc.textContent = `Found matching log entry from ${matched.item.timestamp}. Ready to decrypt.`;
             if (window.lucide) window.lucide.createIcons();
 
@@ -1148,12 +1145,9 @@ function bindEvents() {
             elements.textInput.value = '';
             elements.textInput.placeholder = "Please enter the Transaction Password in the control panel to load the key...";
 
-            elements.basementenAutoRecognizePanel.classList.remove('hidden');
-            elements.basementenAutoRecognizePanel.style.background = 'rgba(239, 68, 68, 0.08)';
-            elements.basementenAutoRecognizePanel.style.border = '1px solid rgba(239, 68, 68, 0.2)';
-            elements.basementenAutoStatusTitle.style.color = '#ef4444';
-            elements.basementenAutoStatusTitle.innerHTML = `<i data-lucide="x-circle" style="width: 14px; height: 14px;"></i> Key Not Found`;
-            elements.basementenAutoStatusDesc.style.color = 'var(--color-text-secondary)';
+            elements.basementenAutoRecognizePanel.classList.remove('hidden', 'success');
+            elements.basementenAutoRecognizePanel.classList.add('danger');
+            elements.basementenAutoStatusTitle.innerHTML = `<i data-lucide="x-circle"></i> Key Not Found`;
             elements.basementenAutoStatusDesc.textContent = "No matching transaction log found for this password.";
             if (window.lucide) window.lucide.createIcons();
         }
@@ -1229,15 +1223,11 @@ function updateNetworkStatus() {
     if (navigator.onLine) {
         elements.connectionStatus.classList.remove('offline');
         elements.connectionStatus.classList.add('online');
-        elements.connectionStatus.style.borderColor = 'rgba(16, 185, 129, 0.4)';
-        elements.connectionStatus.style.backgroundColor = 'rgba(16, 185, 129, 0.1)';
         elements.connectionText.textContent = "Cached";
         elements.connectionStatus.title = "Online — app cached for offline use";
     } else {
         elements.connectionStatus.classList.remove('online');
         elements.connectionStatus.classList.add('offline');
-        elements.connectionStatus.style.borderColor = 'rgba(245, 158, 11, 0.4)';
-        elements.connectionStatus.style.backgroundColor = 'rgba(245, 158, 11, 0.1)';
         elements.connectionText.textContent = "Offline Mode";
         elements.connectionStatus.title = "Offline — running from local cache";
     }
@@ -1581,7 +1571,7 @@ function lockBasementenSession() {
     basementenTxValid = false;
     basementenDecryptedKey = null;
     elements.basementenKeyStatus.textContent = 'Locked [Requires Verification]';
-    elements.basementenKeyStatus.style.color = '#ef4444';
+    elements.basementenKeyStatus.classList.add('locked');
 }
 
 // Hex conversion helpers
@@ -1773,21 +1763,18 @@ function renderBasementenLog() {
     if (history.length === 0) {
         elements.basementenLogRows.innerHTML = `
             <tr>
-                <td colspan="4" style="text-align: center; padding: 15px; color: var(--color-text-muted);">No transaction logs found.</td>
+                <td colspan="4" class="log-empty">No transaction logs found.</td>
             </tr>
         `;
         return;
     }
     history.forEach(item => {
         const tr = document.createElement('tr');
-        tr.style.borderBottom = '1px solid var(--border-glass)';
-        
+
         const tdTime = document.createElement('td');
-        tdTime.style.padding = '10px';
         tdTime.textContent = item.timestamp;
 
         const tdName = document.createElement('td');
-        tdName.style.padding = '10px';
         const badge = document.createElement('span');
         badge.className = `history-badge ${item.mode}`;
         badge.textContent = item.mode;
@@ -1797,11 +1784,8 @@ function renderBasementenLog() {
 
         const tdOutput = document.createElement('td');
         tdOutput.className = 'io-cell';
-        tdOutput.style.padding = '10px';
         const revealOutputBtn = document.createElement('span');
-        revealOutputBtn.style.color = 'var(--color-primary)';
-        revealOutputBtn.style.cursor = 'pointer';
-        revealOutputBtn.style.textDecoration = 'underline';
+        revealOutputBtn.className = 'reveal-link';
         revealOutputBtn.textContent = "[Locked - Click to Reveal]";
         revealOutputBtn.addEventListener('click', () => {
             promptRevealPlaintext(item, tdOutput, 'output');
@@ -1810,13 +1794,9 @@ function renderBasementenLog() {
 
         const tdKey = document.createElement('td');
         tdKey.className = 'key-cell';
-        tdKey.style.padding = '10px';
-        tdKey.style.wordBreak = 'break-all';
-        
+
         const revealBtn = document.createElement('span');
-        revealBtn.style.color = 'var(--color-primary)';
-        revealBtn.style.cursor = 'pointer';
-        revealBtn.style.textDecoration = 'underline';
+        revealBtn.className = 'reveal-link';
         revealBtn.textContent = "[Locked - Click to Reveal]";
         revealBtn.addEventListener('click', () => {
             promptRevealKey(item, tdKey);
@@ -1858,7 +1838,7 @@ function promptRevealKey(item, tdKey) {
             const payload = JSON.parse(new TextDecoder().decode(decrypted));
             tdKey.innerHTML = '';
             tdKey.textContent = payload.key;
-            tdKey.style.color = '#10b981';
+            tdKey.classList.add('revealed');
 
             closeModal(elements.basementenRevealKeyModal);
         } catch (err) {
@@ -1898,7 +1878,7 @@ function promptRevealPlaintext(item, cell, field) {
             cell.innerHTML = '';
             cell.textContent = val;
             cell.title = val;
-            cell.style.color = '#10b981';
+            cell.classList.add('revealed');
 
             closeModal(elements.basementenRevealKeyModal);
         } catch (err) {
@@ -1927,7 +1907,7 @@ async function handleBasementenAccess(previousCipher) {
         } else {
             // Already unlocked in session
             elements.basementenKeyStatus.textContent = 'Active [Secure 256-bit]';
-            elements.basementenKeyStatus.style.color = '#10b981';
+            elements.basementenKeyStatus.classList.remove('locked');
             saveConfigState();
             setupUIFromState();
             runConversion();
@@ -2098,7 +2078,7 @@ function showBasementenSetup(previousCipher) {
 
             // Update UI status
             elements.basementenKeyStatus.textContent = 'Active [Secure 256-bit]';
-            elements.basementenKeyStatus.style.color = '#10b981';
+            elements.basementenKeyStatus.classList.remove('locked');
 
             // Clean inputs
             elements.basementenSetupPwdInput.value = '';
@@ -2175,7 +2155,7 @@ function showBasementenUnlock(previousCipher) {
             basementenCryptoKey = aesKey;
 
             elements.basementenKeyStatus.textContent = 'Active [Secure 256-bit]';
-            elements.basementenKeyStatus.style.color = '#10b981';
+            elements.basementenKeyStatus.classList.remove('locked');
 
             closeModal(elements.basementenUnlockModal);
             saveConfigState();
