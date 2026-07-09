@@ -9,21 +9,30 @@
  * the new build.
  */
 
-const CACHE_VERSION = 'aegis-v4';
+const CACHE_VERSION = 'aegis-v12';
 
 const PRECACHE_URLS = [
     './',
     './index.html',
     './styles.css',
     './app.js',
+    './dom.js',
+    './state.js',
+    './ui.js',
+    './registry.js',
+    './history.js',
+    './vault.js',
     './ciphers.js',
     './lucide.min.js',
     './qrcode.js',
+    './argon2-bundled.min.js',
+    './argon2-worker.js',
     './manifest.json',
     './fonts/fonts.css',
     './fonts/outfit.woff2',
     './fonts/jetbrains-mono.woff2',
     './icon.png',
+    './icon-maskable.png',
     './logo.png'
 ];
 

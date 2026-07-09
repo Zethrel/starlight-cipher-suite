@@ -8,7 +8,7 @@ Basementen Aegis is an offline-first cipher encoder/decoder with step-by-step pr
 
 ## Development commands
 
-There is no build step, package.json, test suite, or linter. The web app is plain ES modules loaded directly by `index.html`.
+There is no build step, package.json, or linter. The web app is plain ES modules loaded directly by `index.html`.
 
 **Run the web app** (a static server is needed because `app.js`/`ciphers.js` are ES modules):
 
@@ -16,6 +16,14 @@ There is no build step, package.json, test suite, or linter. The web app is plai
 python3 -m http.server 8000
 # open http://localhost:8000
 ```
+
+**Run the tests** (Node ≥ 22 built-in runner, zero dependencies — keep it that way):
+
+```bash
+node --test
+```
+
+Tests live in `tests/*.test.mjs` and cover the pure algorithms in `ciphers.js`. Add cases there when adding or changing a cipher.
 
 **Build the desktop app** (Windows):
 
@@ -32,11 +40,17 @@ Build and sign on the same machine — the certificate lives in that machine's u
 
 ## Architecture
 
-Two JavaScript files carry almost all the logic:
+The web app is a set of ES modules with `app.js` as the entry point (the only file `index.html` loads with `<script type="module">`):
 
 - **`ciphers.js`** — pure cipher algorithms, no DOM access. Each cipher is an exported object with `encode(text, param, retainPunctuation)` / `decode(...)` methods that return `{ result: string, steps: Array<{ title, content }> }`. The `steps` array drives the step-by-step process panel in the UI. Simple substitution ciphers (Caesar, Atbash, ScandiCaesar, Vigenère) share the `processChars()` per-character loop helper. The Basementen cipher is the exception: it's `async` (WebCrypto AES-256-GCM) and returns empty `steps`.
 
-- **`app.js`** — the UI controller. The central piece is the `CIPHERS` registry array: each entry declares `id`, `name`, `shortName`, `icon` (a Lucide icon name), `paramGroup` (the id of a parameter panel in `index.html`), optional `badge`, `modeless: true` for helpers with no encode/decode split, optional `ioLabels`, and a `run(input, mode, opts)` function that reads its parameters from `elements` and calls into `ciphers.js`. The sidebar nav is generated from this registry.
+- **`registry.js`** — the `CIPHERS` registry array, the single source of truth for every cipher: each entry declares `id`, `name`, `shortName`, `icon` (a Lucide icon name), `paramGroup` (the id of a parameter panel in `index.html`), optional `badge`, `modeless: true` for helpers with no encode/decode split, optional `ioLabels`, and a `run(input, mode, opts)` function that reads its parameters from `elements` and calls into `ciphers.js`. The sidebar nav is generated from this registry (`renderCipherNav`).
+
+- **`app.js`** — the controller/entry module: `init()`, `runConversion()` dispatching through the registry, the process panel rendering, `setupUIFromState()`, all cipher-agnostic event handlers, and service-worker registration.
+
+- **`dom.js`** (`elements` map of every DOM node), **`state.js`** (shared `state` object + localStorage load/save/migration), **`ui.js`** (modals, toasts, `showConfirm`), **`history.js`** (the plaintext history panel + debounced auto-save), **`vault.js`** (everything Basementen: `vaultSession` in-memory state, PBKDF2/crypto helpers, setup/unlock/wipe flows, the encrypted transaction log, and `bindVaultEvents()`).
+
+  Note: `vault.js` and `history.js` deliberately import `setupUIFromState`/`runConversion` back from `app.js` (circular imports). This is safe because those calls only happen at runtime from event handlers, never during module evaluation — keep it that way when adding top-level code to these modules.
 
 - **`index.html`** — holds one `.param-group` div per parameter panel (`param-caesar`, `param-vigenere`, …, and `param-none` for parameterless ciphers). `showActiveParameterGroup()` in `app.js` toggles them by id.
 
@@ -48,10 +62,9 @@ Two JavaScript files carry almost all the logic:
 
 ### Adding or changing a cipher
 
-1. Implement the algorithm as an exported object in `ciphers.js`, returning `{ result, steps }`.
-2. Import it in `app.js` and add an entry to the `CIPHERS` registry.
-3. If it needs parameters, add a `.param-group` div in `index.html` and wire the controls into `elements` / `bindEvents()` in `app.js`; otherwise use `paramGroup: 'param-none'`.
-4. Add a friendly name in `getFriendlyCipherName()` if the history panel should label it.
+1. Implement the algorithm as an exported object in `ciphers.js`, returning `{ result, steps }`. Add test cases in `tests/ciphers.test.mjs`.
+2. Import it in `registry.js` and add an entry to the `CIPHERS` registry (the history panel labels entries from the registry's `shortName` automatically).
+3. If it needs parameters, add a `.param-group` div in `index.html`, register the controls in `elements` (`dom.js`), and wire them in `bindEvents()` in `app.js`; otherwise use `paramGroup: 'param-none'`.
 
 ### Service worker cache version — always bump it
 
@@ -59,16 +72,16 @@ Whenever any file listed in `PRECACHE_URLS` changes (which includes `app.js`, `c
 
 ### Offline constraint
 
-The app must work fully offline. All dependencies are vendored locally (`lucide.min.js`, `qrcode.js`, `fonts/`). Never add a CDN link, external font, or any network fetch to the web app.
+The app must work fully offline. All dependencies are vendored locally (`lucide.min.js`, `qrcode.js`, `argon2-bundled.min.js`, `fonts/`). Never add a CDN link, external font, or any network fetch to the web app.
 
 ## The Basementen vault
 
 The password-protected cipher has its crypto split across both JS files:
 
-- `ciphers.js` (`Basementen`): message encryption. AES-256-GCM via WebCrypto, key = SHA-256 of the transaction key string, 12-byte random IV prepended to the ciphertext, output format `SB1:<base64(iv + ciphertext)>`.
-- `app.js`: vault/session management. The master password derives a key via PBKDF2 (`deriveKeyFromPassword`) that encrypts the vault's transaction keys and history at rest.
+- `ciphers.js` (`Basementen`): message encryption. AES-256-GCM via WebCrypto, key = SHA-256 of the transaction key string (fine — that key is 40 random chars, >256 bits of entropy), 12-byte random IV prepended to the ciphertext, output format `SB1:<base64(iv + ciphertext)>`.
+- `vault.js`: vault/session management. Passwords derive AES keys via **Argon2id** (`deriveKeyFromPassword`, 64 MiB / t=3 / p=1) that encrypt the vault's transaction keys and history at rest. Argon2id runs in a dedicated Web Worker (`argon2-worker.js` + vendored `argon2-bundled.min.js`, MIT) because the WASM computes synchronously on its calling thread. **PBKDF2 (600k iterations) remains as a decrypt-only legacy path**: the master blob's KDF is tracked in `localStorage` (`basementen_kdf`, absent = pbkdf2) and upgrades to Argon2id on the next successful unlock; log entries carry a per-entry `kdf` field and old ones stay PBKDF2 forever (their passwords aren't known). If Argon2 parameters ever change, tag the new scheme (e.g. `argon2id-v2`) instead of altering `ARGON2_PARAMS` — stored blobs are bound to the parameters they were created with.
 
-Persistent state lives in `localStorage` under `aegis_state`, `aegis_history`, and `basementen_salt` / `basementen_iv` / `basementen_encrypted_key` / `basementen_history`. `migrateLegacyStorage()` in `app.js` renames pre-rebrand keys; keep it in mind if renaming keys again.
+Persistent state lives in `localStorage` under `aegis_state`, `aegis_history`, and `basementen_salt` / `basementen_iv` / `basementen_encrypted_key` / `basementen_kdf` / `basementen_history`. `migrateLegacyStorage()` in `state.js` renames pre-rebrand keys; keep it in mind if renaming keys again.
 
 ## Conventions
 

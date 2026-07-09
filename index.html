@@ -10,9 +10,9 @@
     <meta name="theme-color" content="#090d16">
     
     <!-- PWA Manifest -->
-    <link rel="manifest" href="manifest.json?v=9">
-    <link rel="icon" href="icon.png?v=8" type="image/png">
-    <link rel="apple-touch-icon" href="icon.png?v=8">
+    <link rel="manifest" href="manifest.json?v=12">
+    <link rel="icon" href="icon.png?v=11" type="image/png">
+    <link rel="apple-touch-icon" href="icon.png?v=11">
     
     <!-- Fonts (vendored locally, see fonts/fonts.css) -->
     <link rel="stylesheet" href="fonts/fonts.css">
@@ -31,7 +31,8 @@
         <!-- HEADER -->
         <header class="app-header">
             <div class="header-logo">
-                <img src="logo.png" class="logo-icon logo-img" alt="Basementen Aegis Logo">
+                <img src="logo.png?v=10" class="logo-icon logo-img" 
+                     alt="Basementen Aegis Logo">
                 <div class="logo-text">
                     <h1>Basementen</h1>
                     <p class="logo-subtitle">Aegis</p>
@@ -119,7 +120,8 @@
                                 </div>
                                 <div class="input-group">
                                     <label id="basementen-tx-label" for="basementen-tx-password">Transaction Password (cannot be master password):</label>
-                                    <input type="password" id="basementen-tx-password" class="input-text" placeholder="Set password for this transaction" maxlength="32">
+                                    <input type="password" id="basementen-tx-password" class="input-text" placeholder="Set password for this transaction">
+                                    <span id="basementen-tx-verifying" class="field-verifying hidden"><i data-lucide="loader-2"></i> Verifying password&hellip;</span>
                                     <span id="basementen-tx-error" class="field-error"></span>
                                 </div>
                                 <div class="input-group" id="basementen-name-group">
