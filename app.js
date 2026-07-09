@@ -159,6 +159,9 @@ function init() {
     // Bind Event Listeners
     bindEvents();
 
+    // Auto-lock the Basementen vault after inactivity or when the tab is hidden
+    startBasementenIdleWatcher();
+
     // Render History
     renderHistory();
     
@@ -387,11 +390,7 @@ function bindEvents() {
 
             // Click away from basementen: lock it immediately and clear in-memory key
             if (state.cipher === 'basementen' && selectedCipher !== 'basementen') {
-                basementenUnlocked = false;
-                basementenKey = '';
-                basementenCryptoKey = null;
-                elements.basementenKeyStatus.textContent = 'Locked [Requires Verification]';
-                elements.basementenKeyStatus.style.color = '#ef4444';
+                lockBasementen();
             }
 
             state.cipher = selectedCipher;
@@ -1240,6 +1239,59 @@ function scrambleInputToOutput() {
    THE BASEMENTEN SECURE CIPHER CORE & WORKFLOW
    ========================================================================== */
 let basementenCryptoKey = null;
+let basementenLastActivity = Date.now();
+const BASEMENTEN_IDLE_LOCK_MS = 5 * 60 * 1000; // auto-lock the vault after 5 minutes of inactivity
+
+// Clear every in-memory vault secret and reflect the locked state in the UI. This is the single
+// lock path used by idle timeout, tab-hidden, navigating away, and explicit wipe, so decrypted
+// key material never lingers in memory longer than one of those triggers.
+function lockBasementen() {
+    basementenUnlocked = false;
+    basementenKey = '';
+    basementenCryptoKey = null;
+    basementenDecryptedKey = null;
+    basementenTxValid = false;
+
+    elements.basementenKeyStatus.textContent = 'Locked [Requires Verification]';
+    elements.basementenKeyStatus.style.color = '#ef4444';
+    elements.basementenTxPassword.value = '';
+    elements.basementenTxError.textContent = '';
+
+    if (state.cipher === 'basementen') {
+        // basementenUnlocked is already false, so this only ever renders the "LOCKED" message,
+        // never leftover plaintext/ciphertext - safe to run before wiping the compose boxes below.
+        runConversion();
+
+        // Wipe any plaintext/ciphertext left in the compose boxes from the unlocked session.
+        elements.textInput.value = '';
+        elements.textInput.disabled = true;
+        elements.textInput.placeholder = "Please enter a unique Transaction Password in the control panel to unlock composition...";
+    }
+}
+
+function markBasementenActivity() {
+    basementenLastActivity = Date.now();
+}
+
+// Watch for inactivity and tab-hidden events while the vault is unlocked, locking it
+// automatically so a decrypted key never sits in memory indefinitely.
+function startBasementenIdleWatcher() {
+    ['mousemove', 'mousedown', 'keydown', 'touchstart', 'scroll'].forEach(evt => {
+        document.addEventListener(evt, markBasementenActivity, { passive: true });
+    });
+
+    document.addEventListener('visibilitychange', () => {
+        if (document.hidden && basementenUnlocked) {
+            lockBasementen();
+        }
+    });
+
+    setInterval(() => {
+        if (basementenUnlocked && Date.now() - basementenLastActivity > BASEMENTEN_IDLE_LOCK_MS) {
+            lockBasementen();
+        }
+    }, 15000);
+}
 
 // Hex conversion helpers
 function bufToHex(buf) {
@@ -1633,11 +1685,7 @@ function wipeBasementenWorkspace(confirmMessage) {
     localStorage.removeItem('basementen_salt');
     localStorage.removeItem('basementen_iv');
     localStorage.removeItem('basementen_history');
-    basementenUnlocked = false;
-    basementenKey = '';
-    basementenCryptoKey = null;
-    elements.basementenKeyStatus.textContent = 'Locked [Requires Verification]';
-    elements.basementenKeyStatus.style.color = '#ef4444';
+    lockBasementen();
 
     state.cipher = 'caesar';
     saveConfigState();
@@ -1724,6 +1772,7 @@ function showBasementenSetup() {
             basementenUnlocked = true;
             basementenKey = newKey;
             basementenCryptoKey = aesKey;
+            markBasementenActivity();
 
             // Update UI status
             elements.basementenKeyStatus.textContent = 'Active [Secure 256-bit]';
@@ -1802,6 +1851,7 @@ function showBasementenUnlock(previousCipher) {
             basementenUnlocked = true;
             basementenKey = new TextDecoder().decode(decrypted);
             basementenCryptoKey = aesKey;
+            markBasementenActivity();
 
             elements.basementenKeyStatus.textContent = 'Active [Secure 256-bit]';
             elements.basementenKeyStatus.style.color = '#10b981';
