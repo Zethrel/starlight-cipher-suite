@@ -159,9 +159,7 @@ body::before {
 }
 
 .logo-img {
-    border-radius: 50%;
-    border: 1.5px solid var(--color-primary);
-    object-fit: cover;
+    object-fit: contain;
 }
 
 .logo-text h1 {
