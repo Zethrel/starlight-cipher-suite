@@ -1152,15 +1152,15 @@ function bindEvents() {
                 return;
             }
 
-            if (pwd.length < 10 || pwd.length > 32) {
-                elements.basementenTxError.textContent = 'Password must be between 10 and 32 characters.';
+            if (pwd.length < 10) {
+                elements.basementenTxError.textContent = 'Password must be at least 10 characters.';
                 basementenTxValid = false;
                 lockCompositionPanel("Please enter a unique Transaction Password in the control panel to unlock composition...");
                 return;
             }
 
             txPasswordDebounce = setTimeout(async () => {
-                const isMaster = await isMasterPassword(pwd);
+                const isMaster = await isMasterPasswordCached(pwd);
                 // Ignore stale results if the field changed while deriving
                 if (elements.basementenTxPassword.value !== pwd) return;
 
@@ -1203,7 +1203,7 @@ function bindEvents() {
             elements.basementenAutoRecognizePanel.classList.remove('hidden', 'danger');
             elements.basementenAutoRecognizePanel.classList.add('success');
             elements.basementenAutoStatusTitle.innerHTML = `<i data-lucide="check-circle"></i> Key Recovered Successfully`;
-            elements.basementenAutoStatusDesc.textContent = `Found matching log entry from ${matched.item.timestamp}. Ready to decrypt.`;
+            elements.basementenAutoStatusDesc.textContent = `Found matching log entry from ${formatTimestamp(matched.item.timestamp)}. Ready to decrypt.`;
             if (window.lucide) window.lucide.createIcons();
 
             runConversion();
@@ -1305,7 +1305,12 @@ function updateNetworkStatus() {
  * Execute Cryptographic Conversion
  * (async because The Basementen encrypts via WebCrypto; other ciphers are sync)
  */
+// Monotonic run id: async ciphers (The Basementen) can resolve out of order
+// under fast typing, so stale results must never overwrite newer ones.
+let conversionRunId = 0;
+
 async function runConversion() {
+    const runId = ++conversionRunId;
     const input = elements.textInput.value;
     if (!input) {
         elements.textOutput.value = '';
@@ -1351,6 +1356,9 @@ async function runConversion() {
         resultObj = { result: `Error executing conversion: ${e.message}`, steps: [{ title: 'Execution Failure', content: e.stack }] };
     }
 
+    // A newer conversion started while this one was awaiting; drop this result.
+    if (runId !== conversionRunId) return;
+
     // Set output
     elements.textOutput.value = resultObj.result;
     elements.outputStats.textContent = `${resultObj.result.length} characters`;
@@ -1387,9 +1395,14 @@ function renderProcessSteps(steps) {
         const stepDiv = document.createElement('div');
         stepDiv.className = 'process-step';
 
+        // Built with textContent (not innerHTML) so a step title can never
+        // inject markup, even if a future cipher echoes user input in it.
         const stepTitle = document.createElement('div');
         stepTitle.className = 'process-step-title';
-        stepTitle.innerHTML = `<span class="badge-dot"></span> Step ${idx + 1}: ${step.title}`;
+        const badgeDot = document.createElement('span');
+        badgeDot.className = 'badge-dot';
+        stepTitle.appendChild(badgeDot);
+        stepTitle.appendChild(document.createTextNode(` Step ${idx + 1}: ${step.title}`));
 
         const stepBody = document.createElement('pre');
         stepBody.className = 'process-step-body';
@@ -1434,8 +1447,15 @@ function saveToHistory(input, output) {
     if (!input || !output) return;
 
     if (state.cipher === 'basementen') {
-        if (basementenUnlocked && basementenKey) {
-            saveBasementenTransaction(input, output, state.mode, basementenKey);
+        // Status messages ("[DECRYPTION FAILED...", "LOCKED: ...") are not
+        // transactions; don't write them to the vault log.
+        if (output.startsWith('[') || output.startsWith('LOCKED:')) return;
+        // Log the key that actually produced this result: in decode mode
+        // that's the key recovered from the matched log entry, not the
+        // currently active composition key.
+        const keyUsed = state.mode === 'decode' ? basementenDecryptedKey : basementenKey;
+        if (basementenUnlocked && keyUsed) {
+            saveBasementenTransaction(input, output, state.mode, keyUsed, null, true);
         }
         return;
     }
@@ -1449,8 +1469,8 @@ function saveToHistory(input, output) {
     }
 
     const newItem = {
-        id: Date.now().toString(),
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+        id: crypto.randomUUID(),
+        timestamp: new Date().toISOString(),
         cipher: state.cipher,
         mode: state.mode,
         input: input,
@@ -1502,7 +1522,7 @@ function renderHistory() {
 
         const time = document.createElement('span');
         time.className = 'history-time';
-        time.textContent = item.timestamp;
+        time.textContent = formatTimestamp(item.timestamp);
 
         meta.appendChild(badge);
         meta.appendChild(cipherName);
@@ -1574,6 +1594,17 @@ function getFriendlyCipherName(id) {
 }
 
 // Escape helper for HTML injection safety
+/**
+ * Format a history timestamp for display. New entries store ISO strings
+ * (date + time); entries saved before that change hold a bare time-of-day
+ * string that doesn't parse as a Date, so it's shown as-is.
+ */
+function formatTimestamp(ts) {
+    const parsed = Date.parse(ts);
+    if (isNaN(parsed)) return ts;
+    return new Date(parsed).toLocaleString([], { dateStyle: 'short', timeStyle: 'medium' });
+}
+
 function escapeHtml(str) {
     return str
         .replace(/&/g, "&amp;")
@@ -1638,6 +1669,9 @@ function lockBasementenSession() {
     basementenCryptoKey = null;
     basementenTxValid = false;
     basementenDecryptedKey = null;
+    autoSaveDraftId = null;
+    autoSaveDraftContent = null;
+    masterCheckCache = { pwd: null, isMaster: false };
     elements.basementenKeyStatus.textContent = 'Locked [Requires Verification]';
     elements.basementenKeyStatus.classList.add('locked');
 }
@@ -1750,8 +1784,26 @@ async function searchHistoryByPassword(pwd) {
     return null;
 }
 
+// Auto-save draft tracking: successive auto-saves of the same composition
+// session overwrite one vault entry instead of stacking a new encrypted
+// entry per typing pause (which used to evict real transactions from the
+// 20-entry log).
+let autoSaveDraftId = null;
+let autoSaveDraftContent = null;
+
+// Cache the last master-password comparison so repeated saves with the same
+// transaction password don't redo the 600k-iteration PBKDF2 derivation.
+let masterCheckCache = { pwd: null, isMaster: false };
+
+async function isMasterPasswordCached(pwd) {
+    if (masterCheckCache.pwd === pwd) return masterCheckCache.isMaster;
+    const isMaster = await isMasterPassword(pwd);
+    masterCheckCache = { pwd, isMaster };
+    return isMaster;
+}
+
 // Save transaction securely inside vault separate from general history log
-async function saveBasementenTransaction(input, output, mode, keyUsed, customName) {
+async function saveBasementenTransaction(input, output, mode, keyUsed, customName, isAutoSave = false) {
     const txPwd = elements.basementenTxPassword.value;
     if (!txPwd) {
         elements.basementenTxError.textContent = "Transaction not saved: Set a password to encrypt in vault.";
@@ -1759,13 +1811,18 @@ async function saveBasementenTransaction(input, output, mode, keyUsed, customNam
         return false;
     }
 
-    if (txPwd.length < 10 || txPwd.length > 32) {
-        elements.basementenTxError.textContent = "Transaction not saved: Password must be between 10 and 32 characters.";
+    if (txPwd.length < 10) {
+        elements.basementenTxError.textContent = "Transaction not saved: Password must be at least 10 characters.";
         elements.basementenTxError.style.color = '#ef4444';
         return false;
     }
 
-    const isMaster = await isMasterPassword(txPwd);
+    const draftContent = `${mode}\n${txPwd}\n${input}\n${output}`;
+    if (isAutoSave && draftContent === autoSaveDraftContent) {
+        return true; // Nothing changed since the last auto-save.
+    }
+
+    const isMaster = await isMasterPasswordCached(txPwd);
     if (isMaster) {
         elements.basementenTxError.textContent = "Transaction not saved: Cannot match master password.";
         elements.basementenTxError.style.color = '#ef4444';
@@ -1797,8 +1854,8 @@ async function saveBasementenTransaction(input, output, mode, keyUsed, customNam
         }
 
         const newItem = {
-            id: Date.now().toString(),
-            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+            id: crypto.randomUUID(),
+            timestamp: new Date().toISOString(),
             name: customName || "Unnamed Transaction",
             mode: mode,
             encryptedPayload: bufToHex(encrypted),
@@ -1806,10 +1863,27 @@ async function saveBasementenTransaction(input, output, mode, keyUsed, customNam
             iv: bufToHex(txIv)
         };
 
-        history.unshift(newItem);
-        if (history.length > 20) {
-            history.pop();
+        if (history.length > 0 && history[0].id === autoSaveDraftId) {
+            // Same composition session: overwrite the previous draft entry.
+            // This also lets an explicit save absorb its own auto-saved draft.
+            history[0] = newItem;
+        } else {
+            history.unshift(newItem);
+            if (history.length > 20) {
+                history.pop();
+            }
         }
+
+        if (isAutoSave) {
+            autoSaveDraftId = newItem.id;
+            autoSaveDraftContent = draftContent;
+        } else {
+            // An explicit save finalizes the session; the next auto-save
+            // starts a fresh draft entry.
+            autoSaveDraftId = null;
+            autoSaveDraftContent = null;
+        }
+
         localStorage.setItem('basementen_history', JSON.stringify(history));
         return true;
     } catch (err) {
@@ -1840,7 +1914,7 @@ function renderBasementenLog() {
         const tr = document.createElement('tr');
 
         const tdTime = document.createElement('td');
-        tdTime.textContent = item.timestamp;
+        tdTime.textContent = formatTimestamp(item.timestamp);
 
         const tdName = document.createElement('td');
         const badge = document.createElement('span');
@@ -2143,6 +2217,9 @@ function showBasementenSetup(previousCipher) {
             basementenUnlocked = true;
             basementenKey = newKey;
             basementenCryptoKey = aesKey;
+            // A master password now exists; drop any "not the master password"
+            // verdicts cached from before it was set.
+            masterCheckCache = { pwd: null, isMaster: false };
 
             // Update UI status
             elements.basementenKeyStatus.textContent = 'Active [Secure 256-bit]';

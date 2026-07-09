@@ -9,7 +9,7 @@
  * the new build.
  */
 
-const CACHE_VERSION = 'aegis-v4';
+const CACHE_VERSION = 'aegis-v5';
 
 const PRECACHE_URLS = [
     './',

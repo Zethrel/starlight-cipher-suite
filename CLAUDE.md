@@ -8,7 +8,7 @@ Basementen Aegis is an offline-first cipher encoder/decoder with step-by-step pr
 
 ## Development commands
 
-There is no build step, package.json, test suite, or linter. The web app is plain ES modules loaded directly by `index.html`.
+There is no build step, package.json, or linter. The web app is plain ES modules loaded directly by `index.html`.
 
 **Run the web app** (a static server is needed because `app.js`/`ciphers.js` are ES modules):
 
@@ -16,6 +16,14 @@ There is no build step, package.json, test suite, or linter. The web app is plai
 python3 -m http.server 8000
 # open http://localhost:8000
 ```
+
+**Run the tests** (Node ≥ 22 built-in runner, zero dependencies — keep it that way):
+
+```bash
+node --test
+```
+
+Tests live in `tests/*.test.mjs` and cover the pure algorithms in `ciphers.js`. Add cases there when adding or changing a cipher.
 
 **Build the desktop app** (Windows):
 
