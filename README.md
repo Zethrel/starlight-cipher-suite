@@ -37,6 +37,8 @@ The built app lands in `dist/`.
 
 Every cipher operation runs entirely client-side. The desktop app's bundled server binds only to `127.0.0.1` and is never exposed to your network.
 
+See [`THREAT_MODEL.md`](THREAT_MODEL.md) for what The Basementen vault does and doesn't protect against.
+
 ## Testing
 
 ```bash
