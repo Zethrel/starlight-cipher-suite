@@ -1,11 +1,11 @@
 ================================================================================
-                           STARLIGHT CIPHER SUITE
+                               BASEMENTEN AEGIS
 ================================================================================
 
 An offline-first, standalone cryptographic suite designed for secret messaging, 
 encoding, and decoding. Built natively as a desktop application.
 
-Created by Zethrel - Argent Dawn EU for the Starlight guild.
+Created by Zethrel.
 
 --------------------------------------------------------------------------------
 FEATURES
@@ -13,7 +13,11 @@ FEATURES
 
 * Multiple Cipher Standards:
   Supports Caesar, ROT13, Atbash, Vigenere, Rail Fence, Binary Converter,
-  A1Z26, and a custom Binary Reverse cipher.
+  A1Z26, a custom Binary Reverse cipher, runes, Morse code, and helpers.
+
+* The Basementen Vault:
+  A password-protected vault cipher using AES-256-GCM encryption at rest, with
+  keys derived from passwords via Argon2id (memory-hard, 64 MiB).
 
 * Step-by-Step Visualization:
   Interactive process logging showing exactly how the encryption/decryption 
@@ -37,7 +41,7 @@ HOW TO RUN
 
 Windows (Pre-compiled):
 Simply double-click the pre-compiled executable:
-  dist\StarlightCipherSuite.exe
+  dist\BasementenAegis.exe
 
 Note: Microsoft Edge WebView2 runtime is required. This is built into 
 Windows 11 and all modern updates of Windows 10 by default.
@@ -58,11 +62,11 @@ Step-by-Step Build Instructions:
 2. Install the dependencies required to run and build the GUI:
    pip install pywebview pythonnet pyinstaller
 3. Compile the app using the provided specification file:
-   python -m PyInstaller StarlightCipherSuite.spec --noconfirm
+   python -m PyInstaller BasementenAegis.spec --noconfirm
 4. Locate your built application in the "dist" folder:
-   - macOS: Look for the native .app bundle (e.g. dist/StarlightCipherSuite.app).
+   - macOS: Look for the native .app bundle (e.g. dist/BasementenAegis.app).
             You can drag this to your Applications folder.
-   - Linux: Look for the standalone binary executable dist/StarlightCipherSuite.
+   - Linux: Look for the standalone binary executable dist/BasementenAegis.
 
 --------------------------------------------------------------------------------
 GENERAL USAGE GUIDE
