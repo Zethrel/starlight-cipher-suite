@@ -168,7 +168,9 @@ export const Vigenere = {
     encode(text, key, retainPunctuation) {
         key = (key || '').replace(/[^A-Za-z]/g, '').toUpperCase();
         if (!key) {
-            return { result: text, steps: [{ title: "Error", content: "Keyword is empty or invalid. Please provide a key with letters." }] };
+            // Blank output rather than passing plaintext through: a user might
+            // otherwise copy their unencoded message believing it was encoded.
+            return { result: '', steps: [{ title: "Error", content: "Keyword is empty or invalid. Please provide a key with letters. Output cleared." }] };
         }
 
         const steps = [{
@@ -196,7 +198,7 @@ export const Vigenere = {
     decode(text, key, retainPunctuation) {
         key = (key || '').replace(/[^A-Za-z]/g, '').toUpperCase();
         if (!key) {
-            return { result: text, steps: [{ title: "Error", content: "Keyword is empty or invalid. Please provide a key with letters." }] };
+            return { result: '', steps: [{ title: "Error", content: "Keyword is empty or invalid. Please provide a key with letters. Output cleared." }] };
         }
 
         const steps = [{
@@ -229,7 +231,9 @@ export const RailFence = {
     encode(text, rails, retainPunctuation) {
         rails = parseInt(rails, 10);
         if (isNaN(rails) || rails < 2) {
-            return { result: text, steps: [{ title: "Error", content: "Key must be an integer >= 2." }] };
+            // Blank output rather than passing plaintext through: a user might
+            // otherwise copy their unencoded message believing it was encoded.
+            return { result: '', steps: [{ title: "Error", content: "Key must be an integer >= 2. Output cleared." }] };
         }
 
         // Clean input if not retaining punctuation
@@ -253,8 +257,9 @@ export const RailFence = {
             steps.push({ title: "Punctuation Filter", content: removedPunctuation.join('\n') });
         }
 
-        // Initialize 2D grid
-        const grid = Array.from({ length: rails }, () => Array(cleanText.length).fill('.'));
+        // Initialize 2D grid. Empty cells are null (not '.') so that literal
+        // period characters in the text survive the row-by-row readout.
+        const grid = Array.from({ length: rails }, () => Array(cleanText.length).fill(null));
         let row = 0;
         let dirDown = false;
 
@@ -271,14 +276,14 @@ export const RailFence = {
         let result = '';
         for (let r = 0; r < rails; r++) {
             for (let c = 0; c < cleanText.length; c++) {
-                if (grid[r][c] !== '.') {
+                if (grid[r][c] !== null) {
                     result += grid[r][c];
                 }
             }
         }
 
         // Draw grid for process visualization
-        const gridStr = grid.map((r, idx) => `Row ${idx + 1}: ${r.join(' ')}`).join('\n');
+        const gridStr = grid.map((r, idx) => `Row ${idx + 1}: ${r.map(c => c === null ? '.' : c).join(' ')}`).join('\n');
         steps.push({
             title: `Rail Fence Grid (${rails} Rails)`,
             content: gridStr
@@ -290,20 +295,23 @@ export const RailFence = {
     decode(text, rails, retainPunctuation) {
         rails = parseInt(rails, 10);
         if (isNaN(rails) || rails < 2) {
-            return { result: text, steps: [{ title: "Error", content: "Key must be an integer >= 2." }] };
+            return { result: '', steps: [{ title: "Error", content: "Key must be an integer >= 2. Output cleared." }] };
         }
 
         const len = text.length;
         if (len === 0) return { result: '', steps: [] };
 
         const steps = [];
-        const grid = Array.from({ length: rails }, () => Array(len).fill('.'));
+        // Zigzag positions are marked with a unique object (not '*') so that
+        // ciphertext containing literal asterisks can't collide with the marker.
+        const MARKER = {};
+        const grid = Array.from({ length: rails }, () => Array(len).fill(null));
 
-        // Mark zigzag positions with '*'
+        // Mark zigzag positions
         let row = 0;
         let dirDown = false;
         for (let i = 0; i < len; i++) {
-            grid[row][i] = '*';
+            grid[row][i] = MARKER;
             if (row === 0 || row === rails - 1) {
                 dirDown = !dirDown;
             }
@@ -314,7 +322,7 @@ export const RailFence = {
         let textIdx = 0;
         for (let r = 0; r < rails; r++) {
             for (let c = 0; c < len; c++) {
-                if (grid[r][c] === '*' && textIdx < len) {
+                if (grid[r][c] === MARKER && textIdx < len) {
                     grid[r][c] = text[textIdx++];
                 }
             }
@@ -332,7 +340,7 @@ export const RailFence = {
             row += dirDown ? 1 : -1;
         }
 
-        const gridStr = grid.map((r, idx) => `Row ${idx + 1}: ${r.join(' ')}`).join('\n');
+        const gridStr = grid.map((r, idx) => `Row ${idx + 1}: ${r.map(c => (c === null || c === MARKER) ? '.' : c).join(' ')}`).join('\n');
         steps.push({
             title: `Reconstructed Rail Fence Grid (${rails} Rails)`,
             content: gridStr

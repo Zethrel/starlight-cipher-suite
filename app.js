@@ -60,7 +60,9 @@ const elements = {
     scandicaesarShiftUp: document.getElementById('scandicaesar-shift-up'),
     scandicaesarLang: document.getElementById('scandicaesar-lang'),
     vigenereKey: document.getElementById('vigenere-key'),
+    vigenereError: document.getElementById('vigenere-error'),
     railfenceRails: document.getElementById('railfence-rails'),
+    railfenceError: document.getElementById('railfence-error'),
     
     btnShuffleOutput: document.getElementById('btn-shuffle-output'),
     
@@ -454,11 +456,7 @@ function bindEvents() {
 
             // Click away from basementen: lock it immediately and clear in-memory key
             if (state.cipher === 'basementen' && selectedCipher !== 'basementen') {
-                basementenUnlocked = false;
-                basementenKey = '';
-                basementenCryptoKey = null;
-                elements.basementenKeyStatus.textContent = 'Locked [Requires Verification]';
-                elements.basementenKeyStatus.style.color = '#ef4444';
+                lockBasementenSession();
             }
 
             state.cipher = selectedCipher;
@@ -910,6 +908,8 @@ function runConversion() {
     if (!input) {
         elements.textOutput.value = '';
         elements.outputStats.textContent = '0 characters';
+        elements.vigenereError.textContent = '';
+        elements.railfenceError.textContent = '';
         renderProcessPlaceholder();
         return;
     }
@@ -972,6 +972,8 @@ function runConversion() {
                 break;
             case 'vigenere': {
                 const key = elements.vigenereKey.value;
+                const hasKey = key.replace(/[^A-Za-z]/g, '').length > 0;
+                elements.vigenereError.textContent = hasKey ? '' : 'Enter a keyword (letters) to produce output.';
                 resultObj = state.mode === 'encode'
                     ? Vigenere.encode(input, key, state.retainPunctuation)
                     : Vigenere.decode(input, key, state.retainPunctuation);
@@ -979,6 +981,12 @@ function runConversion() {
             }
             case 'railfence': {
                 const rails = parseInt(elements.railfenceRails.value, 10);
+                const railsValid = !isNaN(rails) && rails >= 2 && rails <= 10;
+                elements.railfenceError.textContent = railsValid ? '' : 'Number of rails must be between 2 and 10.';
+                if (!railsValid) {
+                    resultObj = { result: '', steps: [{ title: 'Error', content: 'Number of rails must be between 2 and 10. Output cleared.' }] };
+                    break;
+                }
                 resultObj = state.mode === 'encode'
                     ? RailFence.encode(input, rails, state.retainPunctuation)
                     : RailFence.decode(input, rails, state.retainPunctuation);
@@ -1202,6 +1210,11 @@ function renderHistory() {
         btnRestore.title = "Restore this transaction";
         btnRestore.innerHTML = `<i data-lucide="folder-input"></i>`;
         btnRestore.addEventListener('click', () => {
+            // Restoring switches cipher outside the sidebar flow; make sure
+            // leaving The Basementen through this path also locks it.
+            if (state.cipher === 'basementen' && item.cipher !== 'basementen') {
+                lockBasementenSession();
+            }
             elements.textInput.value = item.input;
             state.cipher = item.cipher;
             state.mode = item.mode;
@@ -1246,7 +1259,10 @@ function getFriendlyCipherName(id) {
         railfence: 'Rail Fence',
         binary: 'Binary',
         a1z26: 'A1Z26',
-        binreverse: 'Binary Reverse'
+        binreverse: 'Binary Reverse',
+        scandicaesar: 'Scandi Caesar',
+        anagram: 'Anagram',
+        basementen: 'The Basementen'
     };
     return names[id] || id;
 }
@@ -1307,6 +1323,18 @@ function scrambleInputToOutput() {
    THE BASEMENTEN SECURE CIPHER CORE & WORKFLOW
    ========================================================================== */
 let basementenCryptoKey = null;
+
+// Lock the vault and clear every piece of key material held in memory.
+// Must be called on ANY path that navigates away from The Basementen.
+function lockBasementenSession() {
+    basementenUnlocked = false;
+    basementenKey = '';
+    basementenCryptoKey = null;
+    basementenTxValid = false;
+    basementenDecryptedKey = null;
+    elements.basementenKeyStatus.textContent = 'Locked [Requires Verification]';
+    elements.basementenKeyStatus.style.color = '#ef4444';
+}
 
 // Hex conversion helpers
 function bufToHex(buf) {
@@ -1700,11 +1728,7 @@ function wipeBasementenWorkspace(confirmMessage) {
     localStorage.removeItem('basementen_salt');
     localStorage.removeItem('basementen_iv');
     localStorage.removeItem('basementen_history');
-    basementenUnlocked = false;
-    basementenKey = '';
-    basementenCryptoKey = null;
-    elements.basementenKeyStatus.textContent = 'Locked [Requires Verification]';
-    elements.basementenKeyStatus.style.color = '#ef4444';
+    lockBasementenSession();
 
     state.cipher = 'caesar';
     saveConfigState();
