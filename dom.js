@@ -126,3 +126,13 @@ export const elements = {
     outputPanelTitle: document.getElementById('output-panel-title'),
     basementenCopyOutput: document.getElementById('basementen-copy-output')
 };
+
+// Startup sanity check: warn (never crash) about any registered id that no
+// longer exists in index.html — catches refactor typos the moment the page
+// loads instead of as a mystery null error later. cipherBtns is null by
+// design until renderCipherNav() runs in init().
+for (const [name, el] of Object.entries(elements)) {
+    if (el === null && name !== 'cipherBtns') {
+        console.warn(`dom.js: element '${name}' was not found in the document`);
+    }
+}

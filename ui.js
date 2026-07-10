@@ -67,6 +67,9 @@ export function showToast(message, type = 'info', duration = 3500) {
     if (!container) {
         container = document.createElement('div');
         container.className = 'toast-container';
+        // Live region: screen readers announce toasts as they appear
+        container.setAttribute('role', 'status');
+        container.setAttribute('aria-live', 'polite');
         document.body.appendChild(container);
     }
 

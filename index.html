@@ -61,7 +61,7 @@
             <aside class="cipher-sidebar">
                 <h2 class="section-title">Select Cipher</h2>
                 <!-- Buttons are generated from the CIPHERS registry in app.js -->
-                <nav class="cipher-nav"></nav>
+                <nav class="cipher-nav" aria-label="Cipher selection"></nav>
             </aside>
 
             <!-- WORKSPACE -->
@@ -312,10 +312,10 @@
     </div>
 
     <!-- MOBILE APP INSTALL MODAL -->
-    <div id="mobile-modal" class="modal-overlay hidden">
+    <div id="mobile-modal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="mobile-modal-title">
         <div class="modal-content glass">
             <div class="modal-header">
-                <h3><i data-lucide="smartphone"></i> Install on Mobile</h3>
+                <h3 id="mobile-modal-title"><i data-lucide="smartphone"></i> Install on Mobile</h3>
                 <button id="close-modal-btn" class="icon-btn">&times;</button>
             </div>
             <div class="modal-body">
@@ -342,10 +342,10 @@
 
 
     <!-- BASEMENTEN SETUP & WARNING MODAL -->
-    <div id="basementen-setup-modal" class="modal-overlay hidden">
+    <div id="basementen-setup-modal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="basementen-setup-modal-title">
         <div class="modal-content glass modal-md">
             <div class="modal-header">
-                <h3><i data-lucide="shield-alert"></i> Critical Security Setup</h3>
+                <h3 id="basementen-setup-modal-title"><i data-lucide="shield-alert"></i> Critical Security Setup</h3>
                 <button id="basementen-setup-cancel" class="icon-btn" title="Cancel setup">&times;</button>
             </div>
             <div class="modal-body modal-body-stack">
@@ -382,10 +382,10 @@
     </div>
 
     <!-- BASEMENTEN UNLOCK MODAL -->
-    <div id="basementen-unlock-modal" class="modal-overlay hidden">
+    <div id="basementen-unlock-modal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="basementen-unlock-modal-title">
         <div class="modal-content glass modal-sm">
             <div class="modal-header">
-                <h3><i data-lucide="lock"></i> Unlock Basementen</h3>
+                <h3 id="basementen-unlock-modal-title"><i data-lucide="lock"></i> Unlock Basementen</h3>
             </div>
             <div class="modal-body">
                 <p class="modal-desc mb-15">Please enter your master password to access The Basementen cipher workspace.</p>
@@ -407,10 +407,10 @@
     </div>
 
     <!-- BASEMENTEN TRANSACTION LOG MODAL -->
-    <div id="basementen-log-modal" class="modal-overlay hidden">
+    <div id="basementen-log-modal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="basementen-log-modal-title">
         <div class="modal-content glass modal-lg">
             <div class="modal-header">
-                <h3><i data-lucide="file-text"></i> The Basementen Transaction Log</h3>
+                <h3 id="basementen-log-modal-title"><i data-lucide="file-text"></i> The Basementen Transaction Log</h3>
                 <button id="basementen-log-close" class="icon-btn">&times;</button>
             </div>
             <div class="modal-body modal-body-stack">
@@ -442,7 +442,7 @@
     </div>
 
     <!-- BASEMENTEN REVEAL KEY MODAL -->
-    <div id="basementen-reveal-key-modal" class="modal-overlay hidden">
+    <div id="basementen-reveal-key-modal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="basementen-reveal-modal-title">
         <div class="modal-content glass modal-sm">
             <div class="modal-header">
                 <h3><i data-lucide="key-round"></i> <span id="basementen-reveal-modal-title">Reveal Secure Key</span></h3>
@@ -468,7 +468,7 @@
 
 
     <!-- SHARED CONFIRMATION MODAL -->
-    <div id="confirm-modal" class="modal-overlay hidden">
+    <div id="confirm-modal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="confirm-modal-title">
         <div class="modal-content glass confirm-modal">
             <div class="modal-header">
                 <h3 id="confirm-modal-title"></h3>

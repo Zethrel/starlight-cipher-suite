@@ -124,6 +124,8 @@ function showUpdateToast(waitingWorker) {
 
     const toast = document.createElement('div');
     toast.className = 'update-toast glass';
+    toast.setAttribute('role', 'status');
+    toast.setAttribute('aria-live', 'polite');
 
     const message = document.createElement('span');
     message.textContent = 'A new version is ready.';
