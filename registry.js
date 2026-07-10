@@ -64,10 +64,13 @@ export const CIPHERS = [
     },
     {
         id: 'binreverse', name: 'Binary Reverse', shortName: 'Binary Reverse', icon: 'lock',
-        badge: { text: 'Custom' }, paramGroup: 'param-none',
-        run: (input, mode, opts) => mode === 'encode'
-            ? BinaryReverse.encode(input, 'fixed', opts.retainPunctuation)
-            : BinaryReverse.decode(input, 'fixed', opts.retainPunctuation)
+        badge: { text: 'Custom' }, paramGroup: 'param-binreverse',
+        run: (input, mode, opts) => {
+            const formatMode = elements.binreverseFormat.value;
+            return mode === 'encode'
+                ? BinaryReverse.encode(input, formatMode, opts.retainPunctuation)
+                : BinaryReverse.decode(input, formatMode, opts.retainPunctuation);
+        }
     },
     {
         id: 'caesarbrute', name: 'Caesar Brute Force', shortName: 'Caesar Brute', icon: 'search',

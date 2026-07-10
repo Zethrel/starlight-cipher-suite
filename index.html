@@ -189,6 +189,21 @@
                             </div>
                         </div>
 
+                        <!-- Binary Reverse Format Mode -->
+                        <div class="param-group" id="param-binreverse">
+                            <div class="param-subfield">
+                                <label for="binreverse-format">Binary Width:</label>
+                                <select id="binreverse-format" class="select-dropdown">
+                                    <option value="fixed">Fixed (5-bit per letter)</option>
+                                    <option value="variable">Variable (space-separated)</option>
+                                </select>
+                            </div>
+                            <div class="param-info">
+                                <p class="param-info-title"><i data-lucide="info"></i> Binary Reverse Guide</p>
+                                <p>Letters map in reverse (Z=1 … A=26) with randomized digit substitution. Fixed width packs 5-bit chunks; variable width separates numbers with spaces. Decode with the same width mode the message was encoded with.</p>
+                            </div>
+                        </div>
+
                         <!-- Elder Futhark Info -->
                         <div class="param-group" id="param-futhark">
                             <div class="param-info">

@@ -410,6 +410,11 @@ function bindEvents() {
         runConversion();
     });
 
+    // Binary Reverse Format Mode
+    elements.binreverseFormat.addEventListener('change', () => {
+        runConversion();
+    });
+
     // Caesar Brute Force: alphabet select re-ranges the shift slider,
     // the slider scans one candidate at a time, and "Show all shifts"
     // switches the output to the full candidate listing.

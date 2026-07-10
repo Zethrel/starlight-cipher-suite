@@ -65,6 +65,24 @@ export const vaultSession = {
     cryptoKey: null     // master-password-derived CryptoKey
 };
 
+// Swap a submit button into a busy state while an Argon2id derivation runs
+// (~1s), so the modal never looks frozen mid-unlock. Restores the button's
+// original markup (icon included) afterwards.
+function setButtonBusy(button, busy, busyLabel = 'Deriving key…') {
+    if (busy) {
+        button.dataset.restoreHtml = button.innerHTML;
+        button.disabled = true;
+        button.textContent = busyLabel;
+    } else {
+        button.disabled = false;
+        if (button.dataset.restoreHtml !== undefined) {
+            button.innerHTML = button.dataset.restoreHtml;
+            delete button.dataset.restoreHtml;
+            if (window.lucide) window.lucide.createIcons();
+        }
+    }
+}
+
 // Lock the vault and clear every piece of key material held in memory.
 // Must be called on ANY path that navigates away from The Basementen.
 export function lockBasementenSession() {
@@ -485,6 +503,7 @@ function promptRevealPlaintext(item, cell, field) {
     elements.basementenRevealKeyForm.onsubmit = async (e) => {
         e.preventDefault();
         const pwd = elements.basementenRevealKeyPwdInput.value;
+        setButtonBusy(elements.basementenRevealKeySubmit, true);
         try {
             const iv = new Uint8Array(hexToBuf(item.iv));
             const ciphertext = hexToBuf(item.encryptedPayload);
@@ -517,6 +536,8 @@ function promptRevealPlaintext(item, cell, field) {
         } catch (err) {
             console.error(err);
             elements.basementenRevealKeyError.textContent = "Incorrect password. Verification failed.";
+        } finally {
+            setButtonBusy(elements.basementenRevealKeySubmit, false);
         }
     };
 }
@@ -685,6 +706,7 @@ function showBasementenSetup(previousCipher) {
             return;
         }
 
+        setButtonBusy(elements.basementenSetupSubmit, true);
         try {
             // Generate a secure salt & AES key
             const salt = window.crypto.getRandomValues(new Uint8Array(16));
@@ -731,6 +753,8 @@ function showBasementenSetup(previousCipher) {
         } catch (err) {
             console.error(err);
             showToast('Error setting up encryption key: ' + err.message, 'error', 6000);
+        } finally {
+            setButtonBusy(elements.basementenSetupSubmit, false);
         }
     };
 }
@@ -799,6 +823,7 @@ function showBasementenUnlock(previousCipher) {
             return;
         }
 
+        setButtonBusy(elements.basementenUnlockSubmit, true);
         try {
             const salt = new Uint8Array(hexToBuf(saltHex));
             const iv = new Uint8Array(hexToBuf(ivHex));
@@ -837,6 +862,8 @@ function showBasementenUnlock(previousCipher) {
         } catch (err) {
             console.error(err);
             elements.basementenUnlockError.textContent = "Incorrect password. Please try again.";
+        } finally {
+            setButtonBusy(elements.basementenUnlockSubmit, false);
         }
     };
 }

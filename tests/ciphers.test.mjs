@@ -142,15 +142,20 @@ test('A1Z26: out-of-range numbers decode to "?"', () => {
     assert.equal(A1z26.decode('27-1', null, true).result, '?A');
 });
 
-test('Binary Reverse: randomized encoding still round trips', () => {
+test('Binary Reverse: randomized encoding still round trips in both width modes', () => {
     // Digit choice is random per character, so encode twice: outputs may
     // differ but both must decode back to the same (uppercased) plaintext.
     const text = 'Hello World';
-    for (let i = 0; i < 2; i++) {
-        const enc = BinaryReverse.encode(text, 'fixed', true);
-        assertShape(enc);
-        assert.equal(BinaryReverse.decode(enc.result, 'fixed', true).result, 'HELLO WORLD');
+    for (const mode of ['fixed', 'variable']) {
+        for (let i = 0; i < 2; i++) {
+            const enc = BinaryReverse.encode(text, mode, true);
+            assertShape(enc);
+            assert.equal(BinaryReverse.decode(enc.result, mode, true).result, 'HELLO WORLD',
+                `round trip failed in ${mode} mode`);
+        }
     }
+    // Variable mode separates numbers with spaces
+    assert.ok(BinaryReverse.encode(text, 'variable', true).result.includes(' '));
 });
 
 test('Caesar: Æ/Ø/Å round trip in both Scandinavian alphabets', () => {

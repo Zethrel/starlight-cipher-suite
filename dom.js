@@ -23,6 +23,7 @@ export const elements = {
     caesarShiftDown: document.getElementById('caesar-shift-down'),
     caesarShiftUp: document.getElementById('caesar-shift-up'),
     caesarAlphabet: document.getElementById('caesar-alphabet'),
+    binreverseFormat: document.getElementById('binreverse-format'),
     caesarbruteAlphabet: document.getElementById('caesarbrute-alphabet'),
     caesarbruteShift: document.getElementById('caesarbrute-shift'),
     caesarbruteShiftValue: document.getElementById('caesarbrute-shift-value'),
@@ -79,6 +80,7 @@ export const elements = {
     basementenUnlockForm: document.getElementById('basementen-unlock-form'),
     basementenUnlockPwdInput: document.getElementById('basementen-unlock-pwd-input'),
     basementenUnlockError: document.getElementById('basementen-unlock-error'),
+    basementenUnlockSubmit: document.getElementById('basementen-unlock-submit'),
     basementenUnlockCancel: document.getElementById('basementen-unlock-cancel'),
     basementenUnlockForgot: document.getElementById('basementen-unlock-forgot'),
     basementenLogModal: document.getElementById('basementen-log-modal'),
@@ -106,6 +108,7 @@ export const elements = {
     basementenRevealKeyError: document.getElementById('basementen-reveal-key-error'),
     basementenRevealKeyClose: document.getElementById('basementen-reveal-key-close'),
     basementenRevealKeyCancel: document.getElementById('basementen-reveal-key-cancel'),
+    basementenRevealKeySubmit: document.getElementById('basementen-reveal-key-submit'),
     basementenSetupError: document.getElementById('basementen-setup-error'),
 
     // Shared confirmation modal
