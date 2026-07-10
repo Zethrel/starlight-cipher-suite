@@ -48,9 +48,9 @@ The web app is a set of ES modules with `app.js` as the entry point (the only fi
 
 - **`app.js`** — the controller/entry module: `init()`, `runConversion()` dispatching through the registry, the process panel rendering, `setupUIFromState()`, all cipher-agnostic event handlers, and service-worker registration.
 
-- **`dom.js`** (`elements` map of every DOM node), **`state.js`** (shared `state` object + localStorage load/save/migration), **`ui.js`** (modals, toasts, `showConfirm`), **`history.js`** (the plaintext history panel + debounced auto-save), **`vault.js`** (everything Basementen: `vaultSession` in-memory state, PBKDF2/crypto helpers, setup/unlock/wipe flows, the encrypted transaction log, and `bindVaultEvents()`).
+- **`dom.js`** (`elements` map of every DOM node), **`state.js`** (shared `state` object + localStorage load/save/migration), **`ui.js`** (modals, toasts, `showConfirm`), **`vault.js`** (everything Basementen: `vaultSession` in-memory state, crypto helpers, setup/unlock/wipe flows, the encrypted transaction log, the debounced auto-save, and `bindVaultEvents()`). There is deliberately no plaintext history for the other ciphers — only Basementen work is persisted, encrypted, in the vault log.
 
-  Note: `vault.js` and `history.js` deliberately import `setupUIFromState`/`runConversion` back from `app.js` (circular imports). This is safe because those calls only happen at runtime from event handlers, never during module evaluation — keep it that way when adding top-level code to these modules.
+  Note: `vault.js` deliberately imports `setupUIFromState`/`runConversion` back from `app.js` (circular import). This is safe because those calls only happen at runtime from event handlers, never during module evaluation — keep it that way when adding top-level code to this module.
 
 - **`index.html`** — holds one `.param-group` div per parameter panel (`param-caesar`, `param-vigenere`, …, and `param-none` for parameterless ciphers). `showActiveParameterGroup()` in `app.js` toggles them by id.
 
@@ -63,7 +63,7 @@ The web app is a set of ES modules with `app.js` as the entry point (the only fi
 ### Adding or changing a cipher
 
 1. Implement the algorithm as an exported object in `ciphers.js`, returning `{ result, steps }`. Add test cases in `tests/ciphers.test.mjs`.
-2. Import it in `registry.js` and add an entry to the `CIPHERS` registry (the history panel labels entries from the registry's `shortName` automatically).
+2. Import it in `registry.js` and add an entry to the `CIPHERS` registry.
 3. If it needs parameters, add a `.param-group` div in `index.html`, register the controls in `elements` (`dom.js`), and wire them in `bindEvents()` in `app.js`; otherwise use `paramGroup: 'param-none'`.
 
 ### Service worker cache version — always bump it
@@ -83,7 +83,7 @@ The password-protected cipher has its crypto split across both JS files:
 
 Transaction log entries all share one per-vault salt (`basementen_tx_salt`), so a decode-mode password search costs a single Argon2id derivation regardless of log size (pre-shared-salt entries keep their per-entry salts; derived keys are deduplicated through the in-session `txKeyCache`). The log caps at `TX_LOG_CAP` entries: at the cap, explicit saves require confirming the permanent loss of the oldest entry's key, and auto-save drafts pause rather than evict.
 
-Persistent state lives in `localStorage` under `aegis_state`, `aegis_history`, and `basementen_salt` / `basementen_iv` / `basementen_encrypted_key` / `basementen_kdf` / `basementen_tx_salt` / `basementen_history`. `migrateLegacyStorage()` in `state.js` renames pre-rebrand keys; keep it in mind if renaming keys again.
+Persistent state lives in `localStorage` under `aegis_state` and `basementen_salt` / `basementen_iv` / `basementen_encrypted_key` / `basementen_kdf` / `basementen_tx_salt` / `basementen_history`. `migrateLegacyStorage()` in `state.js` renames pre-rebrand keys; keep it in mind if renaming keys again.
 
 ## Conventions
 

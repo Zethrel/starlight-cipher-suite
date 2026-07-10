@@ -9,18 +9,17 @@ export const state = {
     cipher: 'caesar',
     mode: 'encode',
     retainPunctuation: true,
-    showProcess: true,
-    history: []
+    showProcess: true
 };
 
 /**
  * One-time migration from the pre-rebrand localStorage keys, so existing
- * users keep their settings and history under the Basementen Aegis names.
+ * users keep their settings under the Basementen Aegis names. Also removes
+ * storage left behind by the retired plaintext history panel.
  */
 function migrateLegacyStorage() {
     const migrations = [
-        ['cipher_craft_state', 'aegis_state'],
-        ['cipher_craft_history', 'aegis_history']
+        ['cipher_craft_state', 'aegis_state']
     ];
     for (const [oldKey, newKey] of migrations) {
         const oldValue = localStorage.getItem(oldKey);
@@ -31,6 +30,10 @@ function migrateLegacyStorage() {
             localStorage.removeItem(oldKey);
         }
     }
+
+    // The "Recent Transactions" panel was removed; clear its stored data.
+    localStorage.removeItem('aegis_history');
+    localStorage.removeItem('cipher_craft_history');
 }
 
 /**
@@ -52,22 +55,10 @@ export function loadSavedState() {
         }
     }
 
-    const savedHistory = localStorage.getItem('aegis_history');
-    if (savedHistory) {
-        try {
-            state.history = JSON.parse(savedHistory);
-            for (const item of state.history) {
-                item.cipher = migrateCipherId(item.cipher);
-            }
-        } catch (e) {
-            console.error("Error loading history", e);
-            state.history = [];
-        }
-    }
 }
 
 // Retired registry ids are mapped to their successors so old saved state
-// and history entries keep restoring correctly.
+// keeps loading correctly.
 function migrateCipherId(id) {
     // Scandi Caesar merged into Caesar (alphabet dropdown) — same algorithm.
     if (id === 'scandicaesar') return 'caesar';

@@ -11,7 +11,6 @@ datas = [
     ('state.js', '.'),
     ('ui.js', '.'),
     ('registry.js', '.'),
-    ('history.js', '.'),
     ('vault.js', '.'),
     ('ciphers.js', '.'),
     ('sw.js', '.'),

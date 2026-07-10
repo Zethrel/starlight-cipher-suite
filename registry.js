@@ -185,11 +185,3 @@ export function renderCipherNav() {
         nav.appendChild(btn);
     }
 }
-
-/**
- * Format system name to readable name (from the cipher registry)
- */
-export function getFriendlyCipherName(id) {
-    const entry = getCipher(id);
-    return entry ? entry.shortName : id;
-}

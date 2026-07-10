@@ -8,8 +8,52 @@
 import { elements } from './dom.js';
 import { state, saveConfigState } from './state.js';
 import { openModal, closeModal, registerModal, showToast, showConfirm } from './ui.js';
-import { formatTimestamp, saveToHistory } from './history.js';
 import { setupUIFromState, runConversion } from './app.js';
+
+/**
+ * Format a log timestamp for display. Entries store ISO strings
+ * (date + time); entries saved before that change hold a bare time-of-day
+ * string that doesn't parse as a Date, so it's shown as-is.
+ */
+export function formatTimestamp(ts) {
+    const parsed = Date.parse(ts);
+    if (isNaN(parsed)) return ts;
+    return new Date(parsed).toLocaleString([], { dateStyle: 'short', timeStyle: 'medium' });
+}
+
+// Debounced auto-save: after typing settles, Basementen work-in-progress is
+// drafted into the encrypted vault log. Other ciphers save nothing — the
+// plaintext "Recent Transactions" panel was removed by design.
+let historySaveTimeout = null;
+
+export function triggerHistoryAutoSave() {
+    if (historySaveTimeout) clearTimeout(historySaveTimeout);
+
+    historySaveTimeout = setTimeout(() => {
+        const input = elements.textInput.value.trim();
+        const output = elements.textOutput.value.trim();
+
+        if (input && output) {
+            saveToHistory(input, output);
+        }
+    }, 2000); // Save after 2 seconds of inactivity
+}
+
+export function saveToHistory(input, output) {
+    if (!input || !output) return;
+    if (state.cipher !== 'basementen') return;
+
+    // Status messages ("[DECRYPTION FAILED...", "LOCKED: ...") are not
+    // transactions; don't write them to the vault log.
+    if (output.startsWith('[') || output.startsWith('LOCKED:')) return;
+    // Log the key that actually produced this result: in decode mode
+    // that's the key recovered from the matched log entry, not the
+    // currently active composition key.
+    const keyUsed = state.mode === 'decode' ? vaultSession.decryptedKey : vaultSession.key;
+    if (vaultSession.unlocked && keyUsed) {
+        saveBasementenTransaction(input, output, state.mode, keyUsed, null, true);
+    }
+}
 
 // In-memory vault session. Populated on unlock, cleared by
 // lockBasementenSession(); nothing here ever touches localStorage.
@@ -393,7 +437,7 @@ function renderBasementenLog() {
     if (history.length === 0) {
         elements.basementenLogRows.innerHTML = `
             <tr>
-                <td colspan="4" class="log-empty">No transaction logs found.</td>
+                <td colspan="3" class="log-empty">No transaction logs found.</td>
             </tr>
         `;
         return;
@@ -422,59 +466,11 @@ function renderBasementenLog() {
         });
         tdOutput.appendChild(revealOutputBtn);
 
-        const tdKey = document.createElement('td');
-        tdKey.className = 'key-cell';
-
-        const revealBtn = document.createElement('span');
-        revealBtn.className = 'reveal-link';
-        revealBtn.textContent = "[Locked - Click to Reveal]";
-        revealBtn.addEventListener('click', () => {
-            promptRevealKey(item, tdKey);
-        });
-        tdKey.appendChild(revealBtn);
-
         tr.appendChild(tdTime);
         tr.appendChild(tdName);
         tr.appendChild(tdOutput);
-        tr.appendChild(tdKey);
         elements.basementenLogRows.appendChild(tr);
     });
-}
-
-// Prompt and verify password to reveal a locked transaction key
-function promptRevealKey(item, tdKey) {
-    elements.basementenRevealModalTitle.textContent = "Reveal Secure Key";
-    elements.basementenRevealModalDesc.textContent = "Please enter the unique Transaction Password for this log entry to decrypt and reveal the key.";
-    openModal(elements.basementenRevealKeyModal);
-    elements.basementenRevealKeyPwdInput.value = '';
-    elements.basementenRevealKeyError.textContent = '';
-    elements.basementenRevealKeyPwdInput.focus();
-
-    elements.basementenRevealKeyForm.onsubmit = async (e) => {
-        e.preventDefault();
-        const pwd = elements.basementenRevealKeyPwdInput.value;
-        try {
-            const iv = new Uint8Array(hexToBuf(item.iv));
-            const ciphertext = hexToBuf(item.encryptedPayload);
-
-            const aesKey = await deriveTxKey(pwd, item.salt, item.kdf || 'pbkdf2');
-            const decrypted = await window.crypto.subtle.decrypt(
-                { name: "AES-GCM", iv: iv },
-                aesKey,
-                ciphertext
-            );
-
-            const payload = JSON.parse(new TextDecoder().decode(decrypted));
-            tdKey.innerHTML = '';
-            tdKey.textContent = payload.key;
-            tdKey.classList.add('revealed');
-
-            closeModal(elements.basementenRevealKeyModal);
-        } catch (err) {
-            console.error(err);
-            elements.basementenRevealKeyError.textContent = "Incorrect password. Key decryption failed.";
-        }
-    };
 }
 
 // Prompt and verify password to reveal a locked plaintext input/output
@@ -500,13 +496,22 @@ function promptRevealPlaintext(item, cell, field) {
                 ciphertext
             );
 
-            // Decryption succeeded! Reveal the requested plaintext field
+            // Decryption succeeded! Reveal the requested plaintext field.
+            // The revealed cell copies its value on click so the output can
+            // be pasted straight into Decode mode.
             const payload = JSON.parse(new TextDecoder().decode(decrypted));
             const val = field === 'input' ? payload.input : payload.output;
             cell.innerHTML = '';
             cell.textContent = val;
-            cell.title = val;
+            cell.title = 'Click to copy';
             cell.classList.add('revealed');
+            cell.addEventListener('click', () => {
+                navigator.clipboard.writeText(val).then(() => {
+                    showToast('Output copied to clipboard.', 'success');
+                }).catch(() => {
+                    showToast('Copy failed — select the text and copy manually.', 'warning');
+                });
+            });
 
             closeModal(elements.basementenRevealKeyModal);
         } catch (err) {

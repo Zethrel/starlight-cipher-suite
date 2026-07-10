@@ -22,7 +22,7 @@ Plus **The Basementen** — a password-protected vault cipher. Messages are encr
 
 - Step-by-step breakdown of every encode/decode operation
 - Fully offline — fonts, icons, and QR generation are all bundled locally, nothing is fetched over the network
-- Local transaction history, with encrypted history for The Basementen vault
+- Encrypted transaction log for The Basementen vault (nothing else is persisted)
 - Installable as a PWA, or run as a standalone desktop app
 
 ## Running it
