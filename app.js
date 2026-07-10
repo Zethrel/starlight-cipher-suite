@@ -347,10 +347,11 @@ function bindEvents() {
         runConversion();
     });
 
-    // Caesar Shift Slider
+    // Caesar Shift Slider (drags fire dozens of events/sec; label updates
+    // instantly, the conversion itself is coalesced)
     elements.caesarShift.addEventListener('input', (e) => {
         elements.shiftValue.textContent = e.target.value;
-        runConversion();
+        scheduleConversion(50);
     });
 
     // Nudge a range input by +/-1, clamped to its min/max, reusing its own 'input' handler
@@ -396,7 +397,7 @@ function bindEvents() {
 
     elements.caesarbruteShift.addEventListener('input', (e) => {
         elements.caesarbruteShiftValue.textContent = e.target.value;
-        runConversion();
+        scheduleConversion(50);
     });
 
     elements.caesarbruteShiftDown.addEventListener('click', () => nudgeSlider(elements.caesarbruteShift, -1));
@@ -418,23 +419,23 @@ function bindEvents() {
         if (filtered !== e.target.value) {
             e.target.value = filtered;
         }
-        runConversion();
+        scheduleConversion();
     });
 
     // Rail Fence Rails input
     elements.railfenceRails.addEventListener('input', () => {
-        runConversion();
+        scheduleConversion();
     });
 
 
 
-    // TextArea Events
+    // TextArea Events (typing is coalesced; the character counter stays live)
     elements.textInput.addEventListener('input', () => {
         elements.inputStats.textContent = `${elements.textInput.value.length} characters`;
         if (state.cipher === 'anagram') {
             scrambleInputToOutput();
         } else {
-            runConversion();
+            scheduleConversion();
         }
         triggerHistoryAutoSave();
     });
@@ -442,7 +443,7 @@ function bindEvents() {
     elements.textOutput.addEventListener('input', () => {
         elements.outputStats.textContent = `${elements.textOutput.value.length} characters`;
         if (state.cipher === 'anagram') {
-            runConversion();
+            scheduleConversion();
         }
     });
 
@@ -587,7 +588,26 @@ function updateNetworkStatus() {
 // under fast typing, so stale results must never overwrite newer ones.
 let conversionRunId = 0;
 
+// Trailing debounce for high-frequency sources (typing, slider drags):
+// coalesces bursts of input events into one conversion. One-shot actions
+// (mode/cipher switches, toggles, paste) still call runConversion() directly
+// for instant feedback — a direct call supersedes any pending scheduled run.
+let conversionDebounce = null;
+
+function scheduleConversion(delay = 75) {
+    if (conversionDebounce) clearTimeout(conversionDebounce);
+    conversionDebounce = setTimeout(() => {
+        conversionDebounce = null;
+        runConversion();
+    }, delay);
+}
+
 export async function runConversion() {
+    // An immediate run makes any pending debounced run redundant.
+    if (conversionDebounce) {
+        clearTimeout(conversionDebounce);
+        conversionDebounce = null;
+    }
     const runId = ++conversionRunId;
     const input = elements.textInput.value;
     if (!input) {
