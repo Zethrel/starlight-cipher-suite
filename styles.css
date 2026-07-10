@@ -118,6 +118,12 @@ body::before {
     display: none !important;
 }
 
+/* Grays out a control group whose value currently has no effect */
+.control-disabled {
+    opacity: 0.45;
+    pointer-events: none;
+}
+
 .animate-pulse {
     animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }

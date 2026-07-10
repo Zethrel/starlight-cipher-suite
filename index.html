@@ -170,9 +170,22 @@
                                     <option value="se">Swedish (A-Z + Å, Ä, Ö)</option>
                                 </select>
                             </div>
+                            <div id="caesarbrute-slider-group">
+                                <label for="caesarbrute-shift">Try Shift (0-<span id="caesarbrute-shift-max">25</span>): <span id="caesarbrute-shift-value">0</span></label>
+                                <div class="shift-control-row">
+                                    <button type="button" class="nudge-btn" id="caesarbrute-shift-down" aria-label="Decrease shift by 1">&minus;</button>
+                                    <input type="range" id="caesarbrute-shift" min="0" max="25" value="0" class="range-slider">
+                                    <button type="button" class="nudge-btn" id="caesarbrute-shift-up" aria-label="Increase shift by 1">+</button>
+                                </div>
+                            </div>
+                            <label class="toggle-option">
+                                <input type="checkbox" id="caesarbrute-showall">
+                                <span class="slider"></span>
+                                <span class="option-label">Show all shifts</span>
+                            </label>
                             <div class="param-info">
                                 <p class="param-info-title"><i data-lucide="info"></i> Brute Force Guide</p>
-                                <p>Paste intercepted ciphertext and every possible shift is decoded at once. Scan the candidates for the line that reads as plain language — its shift number is the key.</p>
+                                <p>Paste intercepted ciphertext and drag the slider until the output reads as plain language — that shift number is the key. Or enable "Show all shifts" to list every candidate at once.</p>
                             </div>
                         </div>
 

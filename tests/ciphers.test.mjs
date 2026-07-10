@@ -163,14 +163,23 @@ test('Morse: unrecognized codes decode to "?"', () => {
     assert.equal(Morse.decode('...---...---', null, true).result, '?');
 });
 
-test('Caesar Brute Force: candidate list contains the plaintext at the right shift', () => {
+test('Caesar Brute Force: structured candidates contain the plaintext at the right shift', () => {
     const cipher = Caesar.encode('hello world', 7, 'en', true).result;
     const out = CaesarBruteForce.analyze(cipher, 'en');
-    assertShape(out);
-    assert.ok(out.result.includes('Shift 07: hello world'));
-    assert.equal(out.result.split('\n').length, 26);
+    assert.ok(Array.isArray(out.candidates));
+    assert.equal(out.candidates.length, 26);
+    assert.deepEqual(out.candidates[7], { shift: 7, decoded: 'hello world' });
+    assert.equal(out.candidates[0].decoded, cipher); // shift 0 = unmodified input
+    for (const step of out.steps) {
+        assert.equal(typeof step.title, 'string');
+        assert.equal(typeof step.content, 'string');
+    }
     // Scandinavian alphabets try all 29 shifts
-    assert.equal(CaesarBruteForce.analyze('abc', 'dk-no').result.split('\n').length, 29);
+    assert.equal(CaesarBruteForce.analyze('abc', 'dk-no').candidates.length, 29);
+    // formatAll reproduces the classic one-line-per-shift listing
+    const all = CaesarBruteForce.formatAll(out.candidates);
+    assert.ok(all.includes('Shift 07: hello world'));
+    assert.equal(all.split('\n').length, 26);
 });
 
 test('Basementen: encrypt/decrypt round trip with SB1 format', async () => {

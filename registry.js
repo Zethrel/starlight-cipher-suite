@@ -73,8 +73,21 @@ export const CIPHERS = [
         id: 'caesarbrute', name: 'Caesar Brute Force', shortName: 'Caesar Brute', icon: 'search',
         badge: { text: 'Helper', className: 'badge-helper' }, paramGroup: 'param-caesarbrute',
         modeless: true,
-        ioLabels: { input: 'Ciphertext Input', output: 'Candidate Plaintexts' },
-        run: (input) => CaesarBruteForce.analyze(input, elements.caesarbruteAlphabet.value)
+        ioLabels: { input: 'Ciphertext Input', output: 'Candidate Plaintext' },
+        run: (input) => {
+            const { candidates, steps } = CaesarBruteForce.analyze(input, elements.caesarbruteAlphabet.value);
+            if (elements.caesarbruteShowAll.checked) {
+                return { result: CaesarBruteForce.formatAll(candidates), steps };
+            }
+            // Show only the slider-selected shift, clamped to the alphabet size
+            const shift = Math.min(parseInt(elements.caesarbruteShift.value, 10) || 0, candidates.length - 1);
+            const candidate = candidates[shift];
+            steps.push({
+                title: `Candidate at Shift ${String(candidate.shift).padStart(2, '0')}`,
+                content: candidate.decoded
+            });
+            return { result: candidate.decoded, steps };
+        }
     },
     {
         id: 'caesar', name: 'Caesar Cipher', shortName: 'Caesar', icon: 'key-round', paramGroup: 'param-caesar',

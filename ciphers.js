@@ -966,6 +966,12 @@ const BRUTE_ALPHABETS = {
 };
 
 export const CaesarBruteForce = {
+    /**
+     * Returns { candidates, steps } — one { shift, decoded } entry per
+     * possible shift — instead of the { result, steps } shape the other
+     * ciphers use. The registry entry picks a single candidate (or joins
+     * them all) based on the UI's shift slider and "show all" toggle.
+     */
     analyze(text, alphabetKey) {
         const alphabet = BRUTE_ALPHABETS[alphabetKey] || BRUTE_ALPHABETS['en'];
         const size = alphabet.upper.length;
@@ -988,17 +994,24 @@ export const CaesarBruteForce = {
             return out;
         };
 
-        const lines = [];
+        const candidates = [];
         for (let shift = 0; shift < size; shift++) {
-            lines.push(`Shift ${String(shift).padStart(2, '0')}: ${decodeWithShift(shift)}`);
+            candidates.push({ shift, decoded: decodeWithShift(shift) });
         }
 
         const steps = [{
             title: "Brute Force Analysis",
-            content: `Alphabet: ${alphabet.label}\nTried all ${size} possible shifts (shift 00 is the unmodified input).\n\nScan the output for the line that reads as plain language - its shift number is the key the message was encoded with.`
+            content: `Alphabet: ${alphabet.label}\nComputed all ${size} possible shifts (shift 00 is the unmodified input).\n\nDrag the shift slider until the output reads as plain language - that shift number is the key the message was encoded with. Enable "Show all shifts" to list every candidate at once.`
         }];
 
-        return { result: lines.join('\n'), steps };
+        return { candidates, steps };
+    },
+
+    // Join every candidate into the classic one-line-per-shift listing.
+    formatAll(candidates) {
+        return candidates
+            .map((c) => `Shift ${String(c.shift).padStart(2, '0')}: ${c.decoded}`)
+            .join('\n');
     }
 };
 

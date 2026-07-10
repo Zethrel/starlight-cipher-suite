@@ -379,8 +379,35 @@ function bindEvents() {
         runConversion();
     });
 
-    // Caesar Brute Force Alphabet Select
+    // Caesar Brute Force: alphabet select re-ranges the shift slider,
+    // the slider scans one candidate at a time, and "Show all shifts"
+    // switches the output to the full candidate listing.
     elements.caesarbruteAlphabet.addEventListener('change', () => {
+        const alphabet = CAESAR_ALPHABETS[elements.caesarbruteAlphabet.value] || CAESAR_ALPHABETS['en'];
+        const max = alphabet.upper.length - 1;
+        elements.caesarbruteShift.max = max;
+        elements.caesarbruteShiftMax.textContent = max;
+        if (parseInt(elements.caesarbruteShift.value, 10) > max) {
+            elements.caesarbruteShift.value = max;
+        }
+        elements.caesarbruteShiftValue.textContent = elements.caesarbruteShift.value;
+        runConversion();
+    });
+
+    elements.caesarbruteShift.addEventListener('input', (e) => {
+        elements.caesarbruteShiftValue.textContent = e.target.value;
+        runConversion();
+    });
+
+    elements.caesarbruteShiftDown.addEventListener('click', () => nudgeSlider(elements.caesarbruteShift, -1));
+    elements.caesarbruteShiftUp.addEventListener('click', () => nudgeSlider(elements.caesarbruteShift, 1));
+
+    elements.caesarbruteShowAll.addEventListener('change', (e) => {
+        // The slider has no effect while every shift is listed; gray it out.
+        elements.caesarbruteSliderGroup.classList.toggle('control-disabled', e.target.checked);
+        elements.caesarbruteShift.disabled = e.target.checked;
+        elements.caesarbruteShiftDown.disabled = e.target.checked;
+        elements.caesarbruteShiftUp.disabled = e.target.checked;
         runConversion();
     });
 
