@@ -10,8 +10,10 @@ import { elements } from './dom.js';
 import { state, loadSavedState, saveConfigState } from './state.js';
 import { getCipher, renderCipherNav } from './registry.js';
 import { openModal, closeModal, registerModal, showToast } from './ui.js';
-import { renderHistory, saveToHistory, triggerHistoryAutoSave } from './history.js';
-import { vaultSession, lockBasementenSession, handleBasementenAccess, bindVaultEvents } from './vault.js';
+import {
+    vaultSession, lockBasementenSession, handleBasementenAccess, bindVaultEvents,
+    saveToHistory, triggerHistoryAutoSave
+} from './vault.js';
 
 // Global PWA Install prompt pointer
 let deferredPrompt = null;
@@ -33,9 +35,6 @@ function init() {
     // Bind Event Listeners
     bindEvents();
 
-    // Render History
-    renderHistory();
-    
     // Run initial conversion
     runConversion();
     
@@ -468,13 +467,6 @@ function bindEvents() {
 
             setTimeout(() => setCopyBtnIcon('copy'), 1500);
         });
-    });
-
-    // Clear History Action
-    elements.btnClearHistory.addEventListener('click', () => {
-        state.history = [];
-        localStorage.removeItem('aegis_history');
-        renderHistory();
     });
 
     // PWA Install Event Handler

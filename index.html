@@ -127,7 +127,7 @@
                                         <i data-lucide="refresh-cw"></i> Generate New Key
                                     </button>
                                     <button id="basementen-view-log" class="btn btn-secondary btn-sm">
-                                        <i data-lucide="file-text"></i> View Key Log
+                                        <i data-lucide="file-text"></i> View Log
                                     </button>
                                     <button id="basementen-reset-pwd" class="btn btn-secondary btn-sm btn-danger">
                                         <i data-lucide="trash-2"></i> Wipe & Reset
@@ -269,19 +269,6 @@
                     </div>
                 </div>
 
-                <!-- HISTORY LOG -->
-                <div class="history-panel glass">
-                    <div class="panel-header">
-                        <h3><i data-lucide="history"></i> Recent Transactions</h3>
-                        <button id="btn-clear-history" class="btn btn-secondary btn-sm">
-                            <i data-lucide="x-circle"></i> Clear History
-                        </button>
-                    </div>
-                    <div class="history-list" id="history-items">
-                        <div class="placeholder-history">No history found. Transactions will be saved locally.</div>
-                    </div>
-                </div>
-
             </section>
         </main>
         
@@ -390,12 +377,12 @@
     <div id="basementen-log-modal" class="modal-overlay hidden">
         <div class="modal-content glass modal-lg">
             <div class="modal-header">
-                <h3><i data-lucide="file-text"></i> The Basementen Transaction &amp; Key Log</h3>
+                <h3><i data-lucide="file-text"></i> The Basementen Transaction Log</h3>
                 <button id="basementen-log-close" class="icon-btn">&times;</button>
             </div>
             <div class="modal-body modal-body-stack">
-                <p class="modal-desc m-0">This log displays the exact 256-bit keyword generated and used for each individual encryption or decryption transaction.</p>
-                
+                <p class="modal-desc m-0">Your saved transactions, encrypted at rest. Reveal an entry's output with its Transaction Password, copy it, and decrypt it in Decode mode using that same password.</p>
+
                 <div class="log-table-wrap">
                     <table class="log-table">
                         <thead>
@@ -403,7 +390,6 @@
                                 <th>Time</th>
                                 <th>Name</th>
                                 <th>Output</th>
-                                <th class="key-col">256-bit Key</th>
                             </tr>
                         </thead>
                         <tbody id="basementen-log-rows">

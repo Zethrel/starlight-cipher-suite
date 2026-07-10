@@ -9,7 +9,7 @@
  * the new build.
  */
 
-const CACHE_VERSION = 'aegis-v15';
+const CACHE_VERSION = 'aegis-v16';
 
 const PRECACHE_URLS = [
     './',
@@ -20,7 +20,6 @@ const PRECACHE_URLS = [
     './state.js',
     './ui.js',
     './registry.js',
-    './history.js',
     './vault.js',
     './ciphers.js',
     './lucide.min.js',

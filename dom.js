@@ -44,11 +44,9 @@ export const elements = {
     btnClear: document.getElementById('btn-clear'),
     btnCopy: document.getElementById('btn-copy'),
     
-    // Process & History
+    // Process Panel
     processLog: document.getElementById('process-log'),
-    historyItems: document.getElementById('history-items'),
-    btnClearHistory: document.getElementById('btn-clear-history'),
-    
+
     // Mobile Modal
     mobileBtn: document.getElementById('mobile-btn'),
     mobileModal: document.getElementById('mobile-modal'),
