@@ -351,6 +351,17 @@ body::before {
     font-weight: 700;
 }
 
+/* Always-visible note above the cipher list: sets expectations that the
+   classic ciphers are educational, not secure encryption. */
+.cipher-disclaimer {
+    font-size: 0.72rem;
+    line-height: 1.45;
+    color: var(--color-text-muted);
+    border-left: 2px solid var(--color-warning);
+    padding-left: 8px;
+    margin-top: -6px;
+}
+
 .cipher-nav {
     display: flex;
     flex-direction: column;
