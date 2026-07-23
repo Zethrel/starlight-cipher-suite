@@ -15,6 +15,7 @@ import {
     Atbash,
     Vigenere,
     Affine,
+    affineCoprimes,
     Playfair,
     Polybius,
     Bacon,
@@ -114,51 +115,79 @@ test('Vigenere: classic known value and round trip', () => {
 });
 
 test('Affine: canonical known value (a=5, b=8) and round trip', () => {
-    const enc = Affine.encode('AFFINE CIPHER', 5, 8, true);
+    const enc = Affine.encode('AFFINE CIPHER', 5, 8, 'en', true);
     assertShape(enc);
     assert.equal(enc.result, 'IHHWVC SWFRCP');
-    assert.equal(Affine.decode(enc.result, 5, 8, true).result, 'AFFINE CIPHER');
+    assert.equal(Affine.decode(enc.result, 5, 8, 'en', true).result, 'AFFINE CIPHER');
 });
 
 test('Affine: a=1 reduces to a Caesar shift of b', () => {
-    assert.equal(Affine.encode('abc', 1, 3, true).result, Caesar.encode('abc', 3, 'en', true).result);
+    assert.equal(Affine.encode('abc', 1, 3, 'en', true).result, Caesar.encode('abc', 3, 'en', true).result);
 });
 
 test('Affine: non-coprime "a" is rejected with an error step', () => {
-    const out = Affine.encode('abc', 2, 1, true); // 2 shares a factor with 26
+    const out = Affine.encode('abc', 2, 1, 'en', true); // 2 shares a factor with 26
     assert.equal(out.result, '');
     assert.equal(out.steps[0].title, 'Error');
 });
 
+test('Affine: Scandinavian alphabet (m=29 prime) — every a is valid and round trips', () => {
+    // 29 is prime, so all 28 multipliers 1..28 are coprime and usable.
+    assert.equal(affineCoprimes(26).length, 12);
+    assert.equal(affineCoprimes(29).length, 28);
+    const enc = Affine.encode('Blåbær grød', 4, 6, 'dk-no', true); // a=4 is invalid mod 26, valid mod 29
+    assertShape(enc);
+    assert.notEqual(enc.result, '');
+    assert.equal(Affine.decode(enc.result, 4, 6, 'dk-no', true).result, 'Blåbær grød');
+});
+
 test('Playfair: builds the square and round trips (with X padding)', () => {
-    const enc = Playfair.encode('instruments', 'MONARCHY');
+    const enc = Playfair.encode('instruments', 'MONARCHY', 'en');
     assertShape(enc);
     assert.equal(enc.result.replace(/\s/g, ''), 'GATLMZCLRQXA');
     // Decode recovers the padded, J-folded uppercase plaintext
-    assert.equal(Playfair.decode(enc.result, 'MONARCHY').result.replace(/\s/g, ''), 'INSTRUMENTSX');
+    assert.equal(Playfair.decode(enc.result, 'MONARCHY', 'en').result.replace(/\s/g, ''), 'INSTRUMENTSX');
 });
 
 test('Playfair: I and J share a cell', () => {
     // "JET" folds J→I, so it encodes identically to "IET"
-    assert.equal(Playfair.encode('JET', 'KEY').result, Playfair.encode('IET', 'KEY').result);
+    assert.equal(Playfair.encode('JET', 'KEY', 'en').result, Playfair.encode('IET', 'KEY', 'en').result);
+});
+
+test('Playfair: Scandinavian 4×7 grid handles Æ/Ø/Å and round trips', () => {
+    const enc = Playfair.encode('blåbær grød', 'NARWHAL', 'dk-no');
+    assertShape(enc);
+    // Æ/Ø/Å survive the round trip (decoded keeps digraph padding/uppercasing)
+    assert.match(Playfair.decode(enc.result, 'NARWHAL', 'dk-no').result, /[ÆØÅ]/);
 });
 
 test('Polybius: known value, word breaks, and round trip', () => {
-    const enc = Polybius.encode('Hi', null, true);
+    const enc = Polybius.encode('Hi', 'en');
     assertShape(enc);
     assert.equal(enc.result, '23 24');
-    assert.equal(Polybius.decode(Polybius.encode('Hello World', null, true).result, null, true).result,
+    assert.equal(Polybius.decode(Polybius.encode('Hello World', 'en').result, 'en').result,
         'HELLO WORLD');
-    assert.equal(Polybius.decode('66', null, true).result, '?'); // out-of-range code
+    assert.equal(Polybius.decode('66', 'en').result, '?'); // out-of-range code
+});
+
+test('Polybius: Scandinavian 6×5 grid encodes Æ/Ø/Å and round trips', () => {
+    assert.equal(Polybius.encode('Å', 'dk-no').result, '64'); // row 6, col 4
+    assert.equal(Polybius.decode(Polybius.encode('Blåbær grød', 'dk-no').result, 'dk-no').result,
+        'BLÅBÆR GRØD');
 });
 
 test('Bacon: 5-bit A/B groups, word breaks, and round trip', () => {
-    const enc = Bacon.encode('AB', null, true);
+    const enc = Bacon.encode('AB', 'en');
     assertShape(enc);
     assert.equal(enc.result, 'AAAAA AAAAB'); // A=0, B=1
-    assert.equal(Bacon.decode(Bacon.encode('Hi There', null, true).result, null, true).result,
+    assert.equal(Bacon.decode(Bacon.encode('Hi There', 'en').result, 'en').result,
         'HI THERE');
-    assert.equal(Bacon.decode('ABABA', null, true).result, 'K'); // 01010b = 10 = K
+    assert.equal(Bacon.decode('ABABA', 'en').result, 'K'); // 01010b = 10 = K
+});
+
+test('Bacon: Scandinavian letters use the 32-pattern space and round trip', () => {
+    assert.equal(Bacon.encode('Å', 'dk-no').result, 'BBBAA'); // index 28 = 11100b
+    assert.equal(Bacon.decode(Bacon.encode('Höst på ön', 'se').result, 'se').result, 'HÖST PÅ ÖN');
 });
 
 test('Rail Fence: known value and round trips for rails 2-5', () => {
