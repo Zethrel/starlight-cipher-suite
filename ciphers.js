@@ -269,11 +269,11 @@ export const Vigenere = {
 
 /**
  * AFFINE CIPHER
- * E(x) = (a·x + b) mod 26, D(y) = a⁻¹·(y − b) mod 26. `a` must be coprime
- * with 26 (the UI restricts the choices); Caesar is the special case a = 1.
+ * E(x) = (a·x + b) mod m, D(y) = a⁻¹·(y − b) mod m over the chosen alphabet
+ * (m = 26 English, 29 for the Scandinavian variants). `a` must be coprime
+ * with m — and since 29 is prime, EVERY a from 1–28 works there. Caesar is
+ * the special case a = 1.
  */
-const AFFINE_M = 26;
-
 function modInverse(a, m) {
     a = ((a % m) + m) % m;
     for (let x = 1; x < m; x++) {
@@ -282,29 +282,41 @@ function modInverse(a, m) {
     return null; // a not coprime with m — no inverse
 }
 
-function affineRun(text, a, b, retainPunctuation, direction) {
+// The multipliers coprime with m (the only invertible ones); the UI's
+// `a` dropdown is populated from this per selected alphabet.
+export function affineCoprimes(m) {
+    const gcd = (x, y) => (y === 0 ? x : gcd(y, x % y));
+    const out = [];
+    for (let a = 1; a < m; a++) if (gcd(a, m) === 1) out.push(a);
+    return out;
+}
+
+function affineRun(text, a, b, variant, retainPunctuation, direction) {
+    const alphabet = CAESAR_ALPHABETS[variant] || CAESAR_ALPHABETS['en'];
+    const upper = alphabet.upper, lower = alphabet.lower, m = upper.length;
     a = parseInt(a, 10);
-    b = ((parseInt(b, 10) || 0) % AFFINE_M + AFFINE_M) % AFFINE_M;
-    const aInv = modInverse(a, AFFINE_M);
+    b = ((parseInt(b, 10) || 0) % m + m) % m;
+    const aInv = modInverse(a, m);
     if (aInv === null) {
-        return { result: '', steps: [{ title: 'Error', content: `'a' (${a}) must be coprime with 26. Valid values: 1, 3, 5, 7, 9, 11, 15, 17, 19, 21, 23, 25.` }] };
+        return { result: '', steps: [{ title: 'Error', content: `'a' (${a}) must be coprime with ${m}. Valid values: ${affineCoprimes(m).join(', ')}.` }] };
     }
 
     const encoding = direction === 'encode';
     const steps = [{
         title: 'Configuration',
-        content: `Mode: ${encoding ? 'Encode' : 'Decode'}\nFormula: ${encoding ? `E(x) = (${a}·x + ${b}) mod 26` : `D(y) = ${aInv}·(y − ${b}) mod 26   (${a}⁻¹ mod 26 = ${aInv})`}\nRetain Punctuation: ${retainPunctuation ? 'Yes' : 'No'}`
+        content: `Mode: ${encoding ? 'Encode' : 'Decode'}\nAlphabet: ${alphabet.label}\nFormula: ${encoding ? `E(x) = (${a}·x + ${b}) mod ${m}` : `D(y) = ${aInv}·(y − ${b}) mod ${m}   (${a}⁻¹ mod ${m} = ${aInv})`}\nRetain Punctuation: ${retainPunctuation ? 'Yes' : 'No'}`
     }];
 
     const { result, letterSteps } = processChars(text, retainPunctuation, (char) => {
-        if (!isLetter(char)) return null;
-        const upper = isUpper(char);
-        const x = getAlphabetIndex(char);
+        const iu = upper.indexOf(char), il = lower.indexOf(char);
+        if (iu === -1 && il === -1) return null;
+        const isUp = iu !== -1;
+        const x = isUp ? iu : il;
         const y = encoding
-            ? (a * x + b) % AFFINE_M
-            : (aInv * ((x - b) % AFFINE_M + AFFINE_M)) % AFFINE_M;
-        const outChar = getLetterFromIndex(y, upper);
-        return { char: outChar, step: `'${char}' (${x}) → ${encoding ? `(${a}·${x}+${b})` : `${aInv}·(${x}−${b})`} mod 26 = ${y} → '${outChar}'` };
+            ? (a * x + b) % m
+            : (aInv * ((x - b) % m + m)) % m;
+        const outChar = (isUp ? upper : lower)[y];
+        return { char: outChar, step: `'${char}' (${x}) → ${encoding ? `(${a}·${x}+${b})` : `${aInv}·(${x}−${b})`} mod ${m} = ${y} → '${outChar}'` };
     });
 
     steps.push({ title: 'Character Processing', content: summarizeSteps(letterSteps) });
@@ -312,48 +324,59 @@ function affineRun(text, a, b, retainPunctuation, direction) {
 }
 
 export const Affine = {
-    encode(text, a, b, retainPunctuation) {
-        return affineRun(text, a, b, retainPunctuation, 'encode');
+    encode(text, a, b, variant, retainPunctuation) {
+        return affineRun(text, a, b, variant, retainPunctuation, 'encode');
     },
-    decode(text, a, b, retainPunctuation) {
-        return affineRun(text, a, b, retainPunctuation, 'decode');
+    decode(text, a, b, variant, retainPunctuation) {
+        return affineRun(text, a, b, variant, retainPunctuation, 'decode');
     }
 };
 
 /**
  * PLAYFAIR CIPHER
- * Digraph substitution on a 5×5 keyword square (I/J share a cell). Letters
- * are paired up; doubled letters are split with X and an odd final letter is
- * padded with X. Same row → shift right; same column → shift down; otherwise
- * swap columns (decode shifts the opposite way). Non-letters are dropped, so
- * decode is not a perfect round trip of spacing/padding — this is expected.
+ * Digraph substitution on a keyword grid. English uses the classic 5×5 (I/J
+ * share a cell → 25 letters); the Scandinavian variants merge I/J too and add
+ * Æ/Ø/Å or Å/Ä/Ö for 28 letters on a 4×7 grid. Letters are paired up; doubled
+ * letters are split and an odd final letter is padded (with X, or Q when the
+ * letter itself is X). Same row → shift right; same column → shift down;
+ * otherwise swap columns (decode shifts the opposite way). Non-letters are
+ * dropped, so decode keeps the padding — this is expected.
  */
-function playfairSquare(keyword) {
+function playfairConfig(variant) {
+    // Bases already exclude J (folded into I).
+    if (variant === 'dk-no') return { base: 'ABCDEFGHIKLMNOPQRSTUVWXYZÆØÅ', cols: 7, rows: 4 };
+    if (variant === 'se') return { base: 'ABCDEFGHIKLMNOPQRSTUVWXYZÅÄÖ', cols: 7, rows: 4 };
+    return { base: 'ABCDEFGHIKLMNOPQRSTUVWXYZ', cols: 5, rows: 5 };
+}
+
+function playfairSquare(keyword, base) {
     const seen = new Set();
     let square = '';
-    // Keyword letters first (J folded into I), then the rest of the alphabet.
-    for (const raw of ((keyword || '') + 'ABCDEFGHIKLMNOPQRSTUVWXYZ').toUpperCase()) {
+    for (const raw of ((keyword || '') + base).toUpperCase()) {
         const c = raw === 'J' ? 'I' : raw;
-        if (c >= 'A' && c <= 'Z' && !seen.has(c)) {
+        if (base.indexOf(c) !== -1 && !seen.has(c)) {
             seen.add(c);
             square += c;
         }
     }
-    return square; // 25 characters, no J
+    return square; // length === base.length
 }
 
-function playfairDigraphs(text) {
-    const letters = text.toUpperCase().replace(/[^A-Z]/g, '').replace(/J/g, 'I');
+function playfairDigraphs(text, base) {
+    let letters = '';
+    for (const raw of text.toUpperCase()) {
+        const c = raw === 'J' ? 'I' : raw;
+        if (base.indexOf(c) !== -1) letters += c;
+    }
+    const pad = base.indexOf('X') !== -1 ? 'X' : base[base.length - 1];
+    const altPad = base.indexOf('Q') !== -1 ? 'Q' : base[0];
     const pairs = [];
     let i = 0;
     while (i < letters.length) {
         const a = letters[i];
-        let b = letters[i + 1];
-        if (!b) {
-            pairs.push(a + 'X');
-            i += 1;
-        } else if (a === b) {
-            pairs.push(a + 'X');
+        const b = letters[i + 1];
+        if (!b || a === b) {
+            pairs.push(a + (a === pad ? altPad : pad));
             i += 1;
         } else {
             pairs.push(a + b);
@@ -363,26 +386,28 @@ function playfairDigraphs(text) {
     return pairs;
 }
 
-function playfairRun(text, keyword, direction) {
-    const square = playfairSquare(keyword);
+function playfairRun(text, keyword, variant, direction) {
+    const { base, cols, rows } = playfairConfig(variant);
+    const square = playfairSquare(keyword, base);
     const pos = (ch) => {
         const idx = square.indexOf(ch);
-        return [Math.floor(idx / 5), idx % 5];
+        return [Math.floor(idx / cols), idx % cols];
     };
-    const shift = direction === 'encode' ? 1 : 4; // +1 encode, −1 (≡ +4 mod 5) decode
+    const colShift = direction === 'encode' ? 1 : cols - 1; // −1 ≡ +(cols−1) mod cols
+    const rowShift = direction === 'encode' ? 1 : rows - 1;
 
     const gridLines = [];
-    for (let r = 0; r < 5; r++) gridLines.push(square.slice(r * 5, r * 5 + 5).split('').join(' '));
+    for (let r = 0; r < rows; r++) gridLines.push(square.slice(r * cols, r * cols + cols).split('').join(' '));
     const steps = [{
         title: `Key Square (${direction === 'encode' ? 'Encode' : 'Decode'})`,
         content: `Keyword: ${(keyword || '(none)')}\nI and J share a cell.\n\n${gridLines.join('\n')}`
     }];
 
-    if (!/[A-Za-z]/.test(text)) {
+    const pairs = playfairDigraphs(text, base);
+    if (pairs.length === 0) {
         return { result: '', steps };
     }
 
-    const pairs = playfairDigraphs(text);
     const details = [];
     let result = '';
     for (const pair of pairs) {
@@ -390,16 +415,16 @@ function playfairRun(text, keyword, direction) {
         const [r2, c2] = pos(pair[1]);
         let o1, o2, rule;
         if (r1 === r2) {
-            o1 = square[r1 * 5 + (c1 + shift) % 5];
-            o2 = square[r2 * 5 + (c2 + shift) % 5];
+            o1 = square[r1 * cols + (c1 + colShift) % cols];
+            o2 = square[r2 * cols + (c2 + colShift) % cols];
             rule = 'same row';
         } else if (c1 === c2) {
-            o1 = square[((r1 + shift) % 5) * 5 + c1];
-            o2 = square[((r2 + shift) % 5) * 5 + c2];
+            o1 = square[((r1 + rowShift) % rows) * cols + c1];
+            o2 = square[((r2 + rowShift) % rows) * cols + c2];
             rule = 'same column';
         } else {
-            o1 = square[r1 * 5 + c2];
-            o2 = square[r2 * 5 + c1];
+            o1 = square[r1 * cols + c2];
+            o2 = square[r2 * cols + c1];
             rule = 'rectangle';
         }
         result += o1 + o2;
@@ -407,40 +432,56 @@ function playfairRun(text, keyword, direction) {
     }
 
     steps.push({ title: 'Digraph Substitution', content: summarizeSteps(details) });
-    // Group output into readable pairs
     const grouped = result.match(/.{1,2}/g)?.join(' ') || result;
     return { result: grouped, steps };
 }
 
 export const Playfair = {
-    encode(text, keyword) {
-        return playfairRun(text, keyword, 'encode');
+    encode(text, keyword, variant) {
+        return playfairRun(text, keyword, variant, 'encode');
     },
-    decode(text, keyword) {
+    decode(text, keyword, variant) {
         // Strip the readability spaces the encoder inserts between pairs.
-        return playfairRun(text.replace(/\s+/g, ''), keyword, 'decode');
+        return playfairRun(text.replace(/\s+/g, ''), keyword, variant, 'decode');
     }
 };
 
 /**
  * POLYBIUS SQUARE
- * Each letter → its row+column on a standard 5×5 grid (I/J share cell 24).
- * Letters become two-digit codes (1–5 each), spaces become "/", other
- * characters are dropped. Decode reverses it.
+ * Each letter → its row+column on a grid, five columns wide. English uses the
+ * classic 5×5 (I/J share cell 24); the Scandinavian variants keep all 29
+ * letters on a 6×5 grid. Spaces become "/", other characters are dropped.
  */
-const POLYBIUS_SQUARE = 'ABCDEFGHIKLMNOPQRSTUVWXYZ'; // no J
+function polybiusSequence(variant) {
+    if (variant === 'dk-no') return 'ABCDEFGHIJKLMNOPQRSTUVWXYZÆØÅ'; // 29, no merge
+    if (variant === 'se') return 'ABCDEFGHIJKLMNOPQRSTUVWXYZÅÄÖ';
+    return 'ABCDEFGHIKLMNOPQRSTUVWXYZ'; // 25, I/J merged
+}
+
+function polybiusGrid(seq) {
+    const cols = 5;
+    const rows = Math.ceil(seq.length / cols);
+    const lines = ['    ' + Array.from({ length: cols }, (_, c) => c + 1).join(' ')];
+    for (let r = 0; r < rows; r++) {
+        lines.push(`${r + 1} | ` + seq.slice(r * cols, r * cols + cols).split('').join(' '));
+    }
+    return lines.join('\n');
+}
 
 export const Polybius = {
-    encode(text, _param, retainPunctuation) {
+    encode(text, variant) {
+        const seq = polybiusSequence(variant);
+        const foldsJ = variant !== 'dk-no' && variant !== 'se';
         const steps = [{
             title: 'Polybius Grid',
-            content: '    1 2 3 4 5\n1 | A B C D E\n2 | F G H I K\n3 | L M N O P\n4 | Q R S T U\n5 | V W X Y Z\n\nI and J share cell 24. Word breaks shown as "/".'
+            content: `${polybiusGrid(seq)}\n\n${foldsJ ? 'I and J share a cell. ' : ''}Word breaks shown as "/".`
         }];
         const tokens = [];
         const details = [];
         for (const raw of text) {
-            const c = raw.toUpperCase() === 'J' ? 'I' : raw.toUpperCase();
-            const idx = POLYBIUS_SQUARE.indexOf(c);
+            let c = raw.toUpperCase();
+            if (foldsJ && c === 'J') c = 'I';
+            const idx = seq.indexOf(c);
             if (idx !== -1) {
                 const code = `${Math.floor(idx / 5) + 1}${idx % 5 + 1}`;
                 tokens.push(code);
@@ -456,10 +497,11 @@ export const Polybius = {
         return { result: tokens.join(' '), steps };
     },
 
-    decode(text, _param, retainPunctuation) {
+    decode(text, variant) {
+        const seq = polybiusSequence(variant);
         const steps = [{
             title: 'Polybius Grid',
-            content: 'Row-column pairs (1–5) map back to letters; "/" is a word break. J decodes as I.'
+            content: `Row-column pairs map back to letters on this grid; "/" is a word break.\n\n${polybiusGrid(seq)}`
         }];
         const details = [];
         let result = '';
@@ -471,11 +513,16 @@ export const Polybius = {
             if (token === '/') {
                 result += ' ';
                 details.push('/ → space');
-            } else if (/^[1-5][1-5]$/.test(token)) {
+            } else if (/^[1-6][1-5]$/.test(token)) {
                 const idx = (parseInt(token[0], 10) - 1) * 5 + (parseInt(token[1], 10) - 1);
-                const letter = POLYBIUS_SQUARE[idx];
-                result += letter;
-                details.push(`${token} → '${letter}'`);
+                const letter = seq[idx];
+                if (letter) {
+                    result += letter;
+                    details.push(`${token} → '${letter}'`);
+                } else {
+                    result += '?';
+                    details.push(`${token} out of grid → '?'`);
+                }
             } else {
                 result += '?';
                 details.push(`'${token}' invalid → '?'`);
@@ -487,22 +534,27 @@ export const Polybius = {
 };
 
 /**
- * BACON'S CIPHER (26-letter)
- * Each letter → a 5-bit A/B pattern (its 0–25 index in binary, A = 0, B = 1).
- * Spaces become "/", other characters are dropped. Decode reverses it.
+ * BACON'S CIPHER
+ * Each letter → a 5-bit A/B pattern (its index in the chosen alphabet, A = 0,
+ * B = 1). Five bits give 32 patterns, enough for the 26 English or 29
+ * Scandinavian letters. Spaces become "/", other characters are dropped.
  */
 export const Bacon = {
-    encode(text, _param, retainPunctuation) {
+    encode(text, variant) {
+        const alphabet = CAESAR_ALPHABETS[variant] || CAESAR_ALPHABETS['en'];
+        const upper = alphabet.upper, lower = alphabet.lower;
+        const bits = Math.ceil(Math.log2(upper.length));
         const steps = [{
-            title: "Baconian Encoding",
-            content: 'Each letter becomes a 5-symbol A/B group: its position (A=0…Z=25) in 5-bit binary, with A for 0 and B for 1. Word breaks shown as "/".'
+            title: 'Baconian Encoding',
+            content: `Alphabet: ${alphabet.label}\nEach letter becomes a ${bits}-symbol A/B group: its position in the alphabet in ${bits}-bit binary, with A for 0 and B for 1. Word breaks shown as "/".`
         }];
         const tokens = [];
         const details = [];
         for (const raw of text) {
-            const idx = getAlphabetIndex(raw);
+            const iu = upper.indexOf(raw), il = lower.indexOf(raw);
+            const idx = iu !== -1 ? iu : il;
             if (idx !== -1) {
-                const group = idx.toString(2).padStart(5, '0').replace(/0/g, 'A').replace(/1/g, 'B');
+                const group = idx.toString(2).padStart(bits, '0').replace(/0/g, 'A').replace(/1/g, 'B');
                 tokens.push(group);
                 details.push(`'${raw}' (${idx}) → ${group}`);
             } else if (raw === ' ') {
@@ -516,10 +568,14 @@ export const Bacon = {
         return { result: tokens.join(' '), steps };
     },
 
-    decode(text, _param, retainPunctuation) {
+    decode(text, variant) {
+        const alphabet = CAESAR_ALPHABETS[variant] || CAESAR_ALPHABETS['en'];
+        const upper = alphabet.upper;
+        const bits = Math.ceil(Math.log2(upper.length));
+        const groupRe = new RegExp(`^[AB]{${bits}}$`);
         const steps = [{
-            title: "Baconian Decoding",
-            content: 'Each 5-symbol A/B group is read as 5-bit binary (A=0, B=1) → a letter. "/" is a word break.'
+            title: 'Baconian Decoding',
+            content: `Alphabet: ${alphabet.label}\nEach ${bits}-symbol A/B group is read as ${bits}-bit binary (A=0, B=1) → a letter. "/" is a word break.`
         }];
         const details = [];
         let result = '';
@@ -531,11 +587,16 @@ export const Bacon = {
             if (token === '/') {
                 result += ' ';
                 details.push('/ → space');
-            } else if (/^[AB]{5}$/.test(token)) {
+            } else if (groupRe.test(token)) {
                 const idx = parseInt(token.replace(/A/g, '0').replace(/B/g, '1'), 2);
-                const letter = getLetterFromIndex(idx, true);
-                result += letter;
-                details.push(`${token} → '${letter}'`);
+                const letter = upper[idx];
+                if (letter) {
+                    result += letter;
+                    details.push(`${token} → '${letter}'`);
+                } else {
+                    result += '?';
+                    details.push(`${token} out of alphabet → '?'`);
+                }
             } else {
                 result += '?';
                 details.push(`'${token}' invalid → '?'`);

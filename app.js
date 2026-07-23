@@ -6,7 +6,7 @@
  */
 
 import { APP_VERSION } from './version.js';
-import { CAESAR_ALPHABETS, setFullStepDetail } from './ciphers.js';
+import { CAESAR_ALPHABETS, affineCoprimes, setFullStepDetail } from './ciphers.js';
 import { elements } from './dom.js';
 import { state, loadSavedState, saveConfigState } from './state.js';
 import { getCipher, renderCipherNav } from './registry.js';
@@ -271,6 +271,32 @@ function swapIOForModeChange() {
 }
 
 /**
+ * Rebuild the Affine 'a' options and re-range the 'b' slider for the
+ * currently selected alphabet: m is 26 (English) or 29 (Scandinavian, and
+ * being prime every a from 1–28 is valid). Preserves the current 'a' if it
+ * stays valid; clamps 'b' into the new range.
+ */
+function syncAffineControls() {
+    const alphabet = CAESAR_ALPHABETS[elements.affineVariant.value] || CAESAR_ALPHABETS['en'];
+    const m = alphabet.upper.length;
+    const coprimes = affineCoprimes(m);
+
+    const current = parseInt(elements.affineA.value, 10);
+    const keep = coprimes.includes(current) ? current : (coprimes.includes(5) ? 5 : coprimes[1]);
+    elements.affineA.innerHTML = coprimes
+        .map((a) => `<option value="${a}"${a === keep ? ' selected' : ''}>${a}</option>`)
+        .join('');
+
+    const maxB = m - 1;
+    elements.affineB.max = maxB;
+    elements.affineBMax.textContent = maxB;
+    if (parseInt(elements.affineB.value, 10) > maxB) {
+        elements.affineB.value = maxB;
+        elements.affineBValue.textContent = maxB;
+    }
+}
+
+/**
  * Bind DOM Event Listeners
  */
 function bindEvents() {
@@ -436,7 +462,13 @@ function bindEvents() {
         scheduleConversion();
     });
 
-    // Affine multiplier + shift
+    // Affine: alphabet dropdown re-ranges the modulus, so the valid 'a'
+    // multipliers and the 'b' shift range both follow it.
+    syncAffineControls(); // populate on load
+    elements.affineVariant.addEventListener('change', () => {
+        syncAffineControls();
+        runConversion();
+    });
     elements.affineA.addEventListener('change', () => runConversion());
     elements.affineB.addEventListener('input', (e) => {
         elements.affineBValue.textContent = e.target.value;
@@ -445,7 +477,7 @@ function bindEvents() {
     elements.affineBDown.addEventListener('click', () => nudgeSlider(elements.affineB, -1));
     elements.affineBUp.addEventListener('click', () => nudgeSlider(elements.affineB, 1));
 
-    // Playfair keyword (letters only)
+    // Playfair keyword (letters only) + alphabet
     elements.playfairKey.addEventListener('input', (e) => {
         const filtered = e.target.value.replace(/[^A-Za-z]/g, '');
         if (filtered !== e.target.value) {
@@ -453,6 +485,11 @@ function bindEvents() {
         }
         scheduleConversion();
     });
+    elements.playfairVariant.addEventListener('change', () => runConversion());
+
+    // Polybius / Bacon alphabet dropdowns
+    elements.polybiusVariant.addEventListener('change', () => runConversion());
+    elements.baconVariant.addEventListener('change', () => runConversion());
 
     // Rail Fence Rails input
     elements.railfenceRails.addEventListener('input', () => {

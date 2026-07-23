@@ -111,24 +111,21 @@
                         <!-- Affine a & b -->
                         <div class="param-group" id="param-affine">
                             <div class="param-subfield">
-                                <label for="affine-a">Multiplier a (coprime with 26):</label>
+                                <label for="affine-alphabet">Alphabet:</label>
+                                <select id="affine-alphabet" class="select-dropdown">
+                                    <option value="en">English (mod 26)</option>
+                                    <option value="dk-no">Danish & Norwegian (mod 29)</option>
+                                    <option value="se">Swedish (mod 29)</option>
+                                </select>
+                            </div>
+                            <div class="param-subfield">
+                                <label for="affine-a">Multiplier a (coprime with the alphabet size):</label>
                                 <select id="affine-a" class="select-dropdown">
-                                    <option value="1">1</option>
-                                    <option value="3">3</option>
-                                    <option value="5" selected>5</option>
-                                    <option value="7">7</option>
-                                    <option value="9">9</option>
-                                    <option value="11">11</option>
-                                    <option value="15">15</option>
-                                    <option value="17">17</option>
-                                    <option value="19">19</option>
-                                    <option value="21">21</option>
-                                    <option value="23">23</option>
-                                    <option value="25">25</option>
+                                    <!-- Options populated from the alphabet size in app.js -->
                                 </select>
                             </div>
                             <div>
-                                <label for="affine-b">Shift b (0-25): <span id="affine-b-value">8</span></label>
+                                <label for="affine-b">Shift b (0-<span id="affine-b-max">25</span>): <span id="affine-b-value">8</span></label>
                                 <div class="shift-control-row">
                                     <button type="button" class="nudge-btn" id="affine-b-down" aria-label="Decrease b by 1">&minus;</button>
                                     <input type="range" id="affine-b" min="0" max="25" value="8" class="range-slider">
@@ -137,17 +134,57 @@
                             </div>
                             <div class="param-info">
                                 <p class="param-info-title"><i data-lucide="info"></i> Affine Guide</p>
-                                <p>Each letter x becomes (a·x + b) mod 26. Only values of <em>a</em> that are coprime with 26 can be reversed, so the list is limited to those. Caesar is the special case a = 1.</p>
+                                <p>Each letter x becomes (a·x + b) mod m. Only values of <em>a</em> coprime with m are reversible — and since 29 is prime, every a from 1–28 works for the Scandinavian alphabets. Caesar is the special case a = 1.</p>
                             </div>
                         </div>
 
                         <!-- Playfair Keyword -->
                         <div class="param-group" id="param-playfair">
+                            <div class="param-subfield">
+                                <label for="playfair-alphabet">Alphabet:</label>
+                                <select id="playfair-alphabet" class="select-dropdown">
+                                    <option value="en">English (5×5 grid)</option>
+                                    <option value="dk-no">Danish & Norwegian (4×7, +Æ Ø Å)</option>
+                                    <option value="se">Swedish (4×7, +Å Ä Ö)</option>
+                                </select>
+                            </div>
                             <label for="playfair-key">Keyword:</label>
                             <input type="text" id="playfair-key" value="MONARCHY" placeholder="Letters only" maxlength="30" class="input-text">
                             <div class="param-info">
                                 <p class="param-info-title"><i data-lucide="info"></i> Playfair Guide</p>
-                                <p>A 5×5 keyword square encrypts letter pairs (I and J share a cell). Doubled letters are split and an odd final letter is padded with X, so non-letters are dropped and decoded text keeps that padding.</p>
+                                <p>A keyword grid encrypts letter pairs (I and J share a cell). Doubled letters are split and an odd final letter is padded with X, so non-letters are dropped and decoded text keeps that padding. The Scandinavian variants use a 4×7 grid to fit their extra letters.</p>
+                            </div>
+                        </div>
+
+                        <!-- Polybius Alphabet -->
+                        <div class="param-group" id="param-polybius">
+                            <div class="param-subfield">
+                                <label for="polybius-alphabet">Alphabet:</label>
+                                <select id="polybius-alphabet" class="select-dropdown">
+                                    <option value="en">English (5×5 grid)</option>
+                                    <option value="dk-no">Danish & Norwegian (6×5, +Æ Ø Å)</option>
+                                    <option value="se">Swedish (6×5, +Å Ä Ö)</option>
+                                </select>
+                            </div>
+                            <div class="param-info">
+                                <p class="param-info-title"><i data-lucide="info"></i> Polybius Guide</p>
+                                <p>Each letter becomes its row-column pair on the grid. English uses the classic 5×5 (I and J share a cell); the Scandinavian variants keep all 29 letters on a 6×5 grid. Word breaks are shown as "/".</p>
+                            </div>
+                        </div>
+
+                        <!-- Bacon Alphabet -->
+                        <div class="param-group" id="param-bacon">
+                            <div class="param-subfield">
+                                <label for="bacon-alphabet">Alphabet:</label>
+                                <select id="bacon-alphabet" class="select-dropdown">
+                                    <option value="en">English (A-Z)</option>
+                                    <option value="dk-no">Danish & Norwegian (+Æ Ø Å)</option>
+                                    <option value="se">Swedish (+Å Ä Ö)</option>
+                                </select>
+                            </div>
+                            <div class="param-info">
+                                <p class="param-info-title"><i data-lucide="info"></i> Bacon's Cipher Guide</p>
+                                <p>Each letter becomes a 5-symbol A/B group — its position in the alphabet in binary. Five bits give 32 patterns, enough for the 26 English or 29 Scandinavian letters. Word breaks are shown as "/".</p>
                             </div>
                         </div>
 
