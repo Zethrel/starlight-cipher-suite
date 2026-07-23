@@ -49,6 +49,8 @@ export const elements = {
     beaufortKey: document.getElementById('beaufort-key'),
     autokeyVariant: document.getElementById('autokey-alphabet'),
     autokeyKey: document.getElementById('autokey-key'),
+    keywordSubVariant: document.getElementById('keyword-sub-alphabet'),
+    keywordSubKey: document.getElementById('keyword-sub-key'),
     columnarKey: document.getElementById('columnar-key'),
     scytaleCols: document.getElementById('scytale-cols'),
     scytaleColsValue: document.getElementById('scytale-cols-value'),

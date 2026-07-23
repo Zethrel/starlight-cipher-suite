@@ -501,6 +501,8 @@ function bindEvents() {
     elements.beaufortVariant.addEventListener('change', () => runConversion());
     elements.autokeyKey.addEventListener('input', letterKeyHandler);
     elements.autokeyVariant.addEventListener('change', () => runConversion());
+    elements.keywordSubKey.addEventListener('input', letterKeyHandler);
+    elements.keywordSubVariant.addEventListener('change', () => runConversion());
 
     // Columnar keyword
     elements.columnarKey.addEventListener('input', () => scheduleConversion());

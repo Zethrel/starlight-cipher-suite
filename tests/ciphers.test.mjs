@@ -16,6 +16,8 @@ import {
     Vigenere,
     Beaufort,
     Autokey,
+    KeywordSub,
+    YoungerFuthark,
     Affine,
     affineCoprimes,
     Playfair,
@@ -116,6 +118,28 @@ test('Vigenere: classic known value and round trip', () => {
     assertShape(enc);
     assert.equal(enc.result, 'LXFOPVEFRNHR');
     assert.equal(Vigenere.decode(enc.result, 'LEMON', true).result, 'ATTACKATDAWN');
+});
+
+test('Keyword substitution: keyword builds the cipher alphabet, round trips', () => {
+    // Keyword KRYPTOS: cipher alphabet starts K R Y P T O S …, so A→K
+    assert.equal(KeywordSub.encode('A', 'KRYPTOS', 'en', true).result, 'K');
+    const enc = KeywordSub.encode('Hello, World!', 'ZEBRA', 'en', true);
+    assertShape(enc);
+    assert.equal(KeywordSub.decode(enc.result, 'ZEBRA', 'en', true).result, 'Hello, World!');
+    // Scandinavian alphabets scramble and restore Æ/Ø/Å too
+    assert.equal(KeywordSub.decode(KeywordSub.encode('Blåbær grød', 'NØKKEL', 'dk-no', true).result,
+        'NØKKEL', 'dk-no', true).result, 'Blåbær grød');
+});
+
+test('Younger Futhark: 16-rune transliteration (lossy by design)', () => {
+    const enc = YoungerFuthark.encode('Viking', null, true);
+    assertShape(enc);
+    assert.equal(enc.result, 'ᚢᛁᚴᛁᚾᚴ'); // V/K→shared runes
+    // Scandinavian runes are reachable
+    assert.equal(YoungerFuthark.encode('å', null, true).result, 'ᚬ');
+    assert.equal(YoungerFuthark.encode('y', null, true).result, 'ᛦ');
+    // TH is a single rune
+    assert.equal(YoungerFuthark.encode('thor', null, true).result, 'ᚦᚢᚱ');
 });
 
 test('Beaufort: canonical value, reciprocity, and Scandinavian round trip', () => {

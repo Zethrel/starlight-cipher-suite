@@ -367,6 +367,63 @@ export const Autokey = {
 };
 
 /**
+ * KEYWORD SUBSTITUTION (monoalphabetic)
+ * Build a scrambled cipher alphabet by writing the keyword first (dropping
+ * repeats) then the remaining letters in order, and map plain→cipher letter
+ * for letter. The classic newspaper "cryptogram". Works over any alphabet
+ * (English or the 29-letter Scandinavian variants).
+ */
+function keywordCipherAlphabet(keyword, upper) {
+    const seen = new Set();
+    let out = '';
+    for (const raw of ((keyword || '') + upper).toUpperCase()) {
+        if (upper.indexOf(raw) !== -1 && !seen.has(raw)) {
+            seen.add(raw);
+            out += raw;
+        }
+    }
+    return out; // a permutation of `upper`
+}
+
+function keywordSubRun(text, keyword, variant, retainPunctuation, direction) {
+    const alphabet = CAESAR_ALPHABETS[variant] || CAESAR_ALPHABETS['en'];
+    const upper = alphabet.upper, lower = alphabet.lower;
+    const cipherUpper = keywordCipherAlphabet(keyword, upper);
+    const cipherLower = cipherUpper.toLowerCase();
+    const encoding = direction === 'encode';
+    const fromU = encoding ? upper : cipherUpper;
+    const fromL = encoding ? lower : cipherLower;
+    const toU = encoding ? cipherUpper : upper;
+    const toL = encoding ? cipherLower : lower;
+
+    const steps = [{
+        title: 'Configuration',
+        content: `Mode: ${encoding ? 'Encode' : 'Decode'}\nAlphabet: ${alphabet.label}\nKeyword: ${(keyword || '').toUpperCase() || '(none)'}\nPlain:  ${upper}\nCipher: ${cipherUpper}\nRetain Punctuation: ${retainPunctuation ? 'Yes' : 'No'}`
+    }];
+
+    const { result, letterSteps } = processChars(text, retainPunctuation, (char) => {
+        const iu = fromU.indexOf(char), il = fromL.indexOf(char);
+        if (iu === -1 && il === -1) return null;
+        const isUp = iu !== -1;
+        const idx = isUp ? iu : il;
+        const out = (isUp ? toU : toL)[idx];
+        return { char: out, step: `'${char}' → '${out}'` };
+    });
+
+    steps.push({ title: 'Character Substitution', content: summarizeSteps(letterSteps) });
+    return { result, steps };
+}
+
+export const KeywordSub = {
+    encode(text, keyword, variant, retainPunctuation) {
+        return keywordSubRun(text, keyword, variant, retainPunctuation, 'encode');
+    },
+    decode(text, keyword, variant, retainPunctuation) {
+        return keywordSubRun(text, keyword, variant, retainPunctuation, 'decode');
+    }
+};
+
+/**
  * AFFINE CIPHER
  * E(x) = (a·x + b) mod m, D(y) = a⁻¹·(y − b) mod m over the chosen alphabet
  * (m = 26 English, 29 for the Scandinavian variants). `a` must be coprime
@@ -1434,6 +1491,96 @@ export const Futhark = {
         }
 
         steps.push({ title: "Rune Translation", content: summarizeSteps(details) });
+        return { result, steps };
+    }
+};
+
+/**
+ * YOUNGER FUTHARK RUNES
+ * Transliteration to/from the 16-rune Younger Futhark (long-branch) — the
+ * actual Viking-age Scandinavian alphabet. With only 16 runes for many more
+ * sounds, several Latin letters share a rune (U/V/W/O → ᚢ, K/C/Q/G → ᚴ,
+ * I/E/J → ᛁ, S/Z → ᛋ, T/D → ᛏ, B/P → ᛒ). TH is one rune ᚦ; Scandinavian
+ * Å → ᚬ, Æ/Ä → ᛅ, Ø/Ö → ᚢ. It's a lossy transliteration, so decoding is not
+ * a perfect character-level round trip.
+ */
+const YOUNGER_DIGRAPHS = { 'th': 'ᚦ' };
+const YOUNGER_MAP = {
+    'a': 'ᛅ', 'b': 'ᛒ', 'c': 'ᚴ', 'd': 'ᛏ', 'e': 'ᛁ', 'f': 'ᚠ',
+    'g': 'ᚴ', 'h': 'ᚼ', 'i': 'ᛁ', 'j': 'ᛁ', 'k': 'ᚴ', 'l': 'ᛚ',
+    'm': 'ᛘ', 'n': 'ᚾ', 'o': 'ᚢ', 'p': 'ᛒ', 'q': 'ᚴ', 'r': 'ᚱ',
+    's': 'ᛋ', 't': 'ᛏ', 'u': 'ᚢ', 'v': 'ᚢ', 'w': 'ᚢ', 'x': 'ᚴᛋ',
+    'y': 'ᛦ', 'z': 'ᛋ', 'æ': 'ᛅ', 'ä': 'ᛅ', 'ø': 'ᚢ', 'ö': 'ᚢ', 'å': 'ᚬ'
+};
+
+// Reverse map for decoding; the first Latin letter listed for a rune wins.
+const YOUNGER_REVERSE = (() => {
+    const rev = { 'ᚦ': 'th', 'ᚢ': 'u', 'ᚴ': 'k', 'ᛁ': 'i', 'ᛋ': 's', 'ᛏ': 't', 'ᛒ': 'b', 'ᛅ': 'a', 'ᚬ': 'å', 'ᛦ': 'y' };
+    for (const [latin, rune] of Object.entries(YOUNGER_MAP)) {
+        if (rune.length === 1 && !(rune in rev)) rev[rune] = latin;
+    }
+    return rev;
+})();
+
+export const YoungerFuthark = {
+    encode(text, _, retainPunctuation) {
+        const steps = [{
+            title: 'Younger Futhark Transliteration',
+            content: 'The 16-rune Viking-age alphabet. Runes have no case.\nShared runes: U/V/W/O → ᚢ, K/C/Q/G → ᚴ, I/E/J → ᛁ, S/Z → ᛋ, T/D → ᛏ, B/P → ᛒ, Y → ᛦ.\nDigraph: TH → ᚦ.  Scandinavian: Å → ᚬ, Æ/Ä → ᛅ, Ø/Ö → ᚢ.'
+        }];
+        const details = [];
+        const lower = text.toLowerCase();
+        let result = '';
+        let i = 0;
+        while (i < lower.length) {
+            const pair = lower.slice(i, i + 2);
+            if (YOUNGER_DIGRAPHS[pair]) {
+                result += YOUNGER_DIGRAPHS[pair];
+                details.push(`'${pair}' -> ${YOUNGER_DIGRAPHS[pair]} (single rune)`);
+                i += 2;
+                continue;
+            }
+            const char = lower[i];
+            if (YOUNGER_MAP[char]) {
+                result += YOUNGER_MAP[char];
+                details.push(`'${char}' -> ${YOUNGER_MAP[char]}`);
+            } else if (char === ' ') {
+                result += ' ';
+                details.push('Space preserved');
+            } else if (retainPunctuation) {
+                result += char;
+                details.push(`Punctuation '${char}' retained`);
+            } else {
+                details.push(`Punctuation '${char}' skipped`);
+            }
+            i++;
+        }
+        steps.push({ title: 'Character Transliteration', content: summarizeSteps(details) });
+        return { result, steps };
+    },
+
+    decode(text, _, retainPunctuation) {
+        const steps = [{
+            title: 'Younger Futhark Transliteration',
+            content: 'Runes decode to a representative Latin letter (several sounds share a rune, so this is not a perfect round trip). ᚦ -> th.'
+        }];
+        const details = [];
+        let result = '';
+        for (const char of text) {
+            if (YOUNGER_REVERSE[char]) {
+                result += YOUNGER_REVERSE[char];
+                details.push(`${char} -> '${YOUNGER_REVERSE[char]}'`);
+            } else if (char === ' ') {
+                result += ' ';
+                details.push('Space preserved');
+            } else if (retainPunctuation) {
+                result += char;
+                details.push(`Non-rune character '${char}' retained`);
+            } else {
+                details.push(`Non-rune character '${char}' skipped`);
+            }
+        }
+        steps.push({ title: 'Rune Translation', content: summarizeSteps(details) });
         return { result, steps };
     }
 };
