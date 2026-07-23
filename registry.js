@@ -9,6 +9,8 @@ import {
     Vigenere,
     Beaufort,
     Autokey,
+    KeywordSub,
+    YoungerFuthark,
     Affine,
     Playfair,
     Polybius,
@@ -163,6 +165,23 @@ export const CIPHERS = [
         run: (input, mode, opts) => mode === 'encode'
             ? Futhark.encode(input, null, opts.retainPunctuation)
             : Futhark.decode(input, null, opts.retainPunctuation)
+    },
+    {
+        id: 'keywordsub', name: 'Keyword Substitution', shortName: 'Keyword Sub', icon: 'case-sensitive', paramGroup: 'param-keywordsub',
+        run: (input, mode, opts) => {
+            const key = elements.keywordSubKey.value;
+            const variant = elements.keywordSubVariant.value;
+            return mode === 'encode'
+                ? KeywordSub.encode(input, key, variant, opts.retainPunctuation)
+                : KeywordSub.decode(input, key, variant, opts.retainPunctuation);
+        }
+    },
+    {
+        id: 'youngerfuthark', name: 'Younger Futhark', shortName: 'Younger', icon: 'scroll',
+        badge: { text: 'Runes', className: 'badge-scandi' }, paramGroup: 'param-youngerfuthark',
+        run: (input, mode, opts) => mode === 'encode'
+            ? YoungerFuthark.encode(input, null, opts.retainPunctuation)
+            : YoungerFuthark.decode(input, null, opts.retainPunctuation)
     },
     {
         id: 'morse', name: 'Morse Code', shortName: 'Morse', icon: 'radio', paramGroup: 'param-none',

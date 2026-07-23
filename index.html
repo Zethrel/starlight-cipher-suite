@@ -234,6 +234,32 @@
                             </div>
                         </div>
 
+                        <!-- Keyword Substitution Keyword + Alphabet -->
+                        <div class="param-group" id="param-keywordsub">
+                            <div class="param-subfield">
+                                <label for="keyword-sub-alphabet">Alphabet:</label>
+                                <select id="keyword-sub-alphabet" class="select-dropdown">
+                                    <option value="en">English (26 letters)</option>
+                                    <option value="dk-no">Danish & Norwegian (29)</option>
+                                    <option value="se">Swedish (29)</option>
+                                </select>
+                            </div>
+                            <label for="keyword-sub-key">Keyword:</label>
+                            <input type="text" id="keyword-sub-key" value="KRYPTOS" placeholder="Letters" maxlength="30" class="input-text">
+                            <div class="param-info">
+                                <p class="param-info-title"><i data-lucide="info"></i> Keyword Substitution Guide</p>
+                                <p>The keyword (with duplicate letters dropped) starts a scrambled alphabet; the rest of the letters follow in order. Each plaintext letter maps to the letter in that scrambled alphabet at the same position — a simple monoalphabetic substitution.</p>
+                            </div>
+                        </div>
+
+                        <!-- Younger Futhark Runes -->
+                        <div class="param-group" id="param-youngerfuthark">
+                            <div class="param-info">
+                                <p class="param-info-title"><i data-lucide="info"></i> Younger Futhark Guide</p>
+                                <p>The 16-rune long-branch alphabet of the Viking Age. With fewer runes than letters, several sounds share one rune (k/g/c → ᚴ, u/o/v/w → ᚢ), so encoding is lossy by design — decoding gives a phonetic approximation, not the exact original.</p>
+                            </div>
+                        </div>
+
                         <!-- Scytale Columns -->
                         <div class="param-group" id="param-scytale">
                             <label for="scytale-cols">Columns / rod size (2-12): <span id="scytale-cols-value">4</span></label>
